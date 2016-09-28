@@ -1,0 +1,3 @@
+hadoop/WordCountMapper.class
+hadoop/WordCount.class
+hadoop/WordCountReducer.class
