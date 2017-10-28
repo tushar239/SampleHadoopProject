@@ -1,7 +1,6 @@
 package hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
@@ -61,13 +60,18 @@ public class WordCount {
         job.setOutputValueClass(IntWritable.class);
 
         // Input
-        FileInputFormat.addInputPath(job, inputPath);
+        //FileInputFormat.addInputPath(job, inputPath);
+        FileInputFormat.setInputPaths(job, new Path(args[0])); // for AWS EMR
         job.setInputFormatClass(TextInputFormat.class);
 
         // Output
-        FileOutputFormat.setOutputPath(job, outputDir);
+        //FileOutputFormat.setOutputPath(job, outputDir);
+        FileOutputFormat.setOutputPath(job, new Path(args[1])); // for AWS EMR
         job.setOutputFormatClass(TextOutputFormat.class);
 
+        job.waitForCompletion(true); // for AWS EMR
+
+/*
         // Delete output if exists
         FileSystem hdfs = FileSystem.get(conf);
         if (hdfs.exists(outputDir))
@@ -76,6 +80,7 @@ public class WordCount {
         // Execute job
         int code = job.waitForCompletion(true) ? 0 : 1;
         System.exit(code);
+*/
 
     }
 }

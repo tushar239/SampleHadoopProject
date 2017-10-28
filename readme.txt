@@ -8,7 +8,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 // MAPPER-
-// InputSplit is an input to all Mappers. Default sie of InputSplit is same as size of HDFS block.
+// InputSplit is an input to all Mappers. Default size of InputSplit is same as size of HDFS block.
 // While running MapReduce, you need to specify the type of InputFormat. Default type is TextInputFormat.
 // InputFormat reads one line at a time by default from InputSplit and creates key-value pair from it and feeds that key-value to a Mapper.
 // TextInputFormat considers key as byte offset of a line and value as a line itself.
