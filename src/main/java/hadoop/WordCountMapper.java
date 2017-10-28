@@ -21,7 +21,7 @@ public class WordCountMapper
                     Context context)
             throws IOException, InterruptedException {
         String line = value.toString();
-        StringTokenizer itr = new StringTokenizer(line);
+        StringTokenizer itr = new StringTokenizer(line, ",");
 
         while (itr.hasMoreTokens()) {
             //just added the below line to convert everything to lower case
