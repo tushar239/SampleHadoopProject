@@ -14,42 +14,361 @@ import java.io.IOException;
 
 
 /*
- From "Hadoop The Definitive Guide 4th Edition" Book
- pg 23-27
 
- Rather than using built-in Java types, Hadoop provides its own set of basic types that are op‐ timized for network serialization. These are found in the org.apache.hadoop.io pack‐ age. Here we use LongWritable, which corresponds to a Java Long, Text (like Java String), and IntWritable (like Java Integer).
+When you read this open, a book as well as 'MapReduce Document Self-Prepared.docx'
 
- The input types of the reduce function must match the output types of the map function: Text and IntWritable.
+For Hadoop1 vs Hadoop2, read 'Hadoop1 and Hadoop2 Self Created Document.docx'
+For Hadoop Configuration, read 'Hadoop Configuration Self-Created Document.txt'
+For using Cloudera Hadoop VM, read 'Running WordCount job on Cloudera VM.txt'
 
- static addInputPath() method on FileInputFormat, and it can be a single file, a directory (in which case, the input forms all the files in that direc‐ tory), or a file pattern. As the name suggests, addInputPath() can be called more than once to use input from multiple paths.
 
- The setOutputKeyClass() and setOutputValueClass() methods control the output types for the reduce function, and must match what the Reduce class produces. The map output types default to the same types, so they do not need to be set if the mapper produces the same types as the reducer (as it does in our case). However, if they are different, the map output types must be set using the setMapOutputKeyClass() and setMapOutputValueClass() methods.
+Hadoop File System  (pg 53)
 
- The waitForCompletion() method on Job submits the job and waits for it to finish. The single argument to the method is a flag indicating whether verbose output is generated. When true, the job writes information about its progress to the console.
- The return value of the waitForCompletion() method is a Boolean indicating success (true) or failure (false), which we translate into the program’s exit code of 0 or 1.
+    Hadoop can work with many file systems, not just HDFS. HDFS is a preferred one because of its unique feature of creating large blocks.
+    Hadoop can work
+    - Local FS
+    - HDFS
+    - WebHDFS
+    - HAR
+    - View
+    - FTP
+    - S3   ---- AWS EMR allows you to use S3
+    - Azure
+    - Swift
 
- Commands to run this job
-    hadoop jar ./target/SampleHadoopProject-1.0-SNAPSHOT.jar hadoop.WordCount ./input ./output
+    Hadoop has an abstract notion of filesystems, of which HDFS is just one implementation.
+    The Java abstract class org.apache.hadoop.fs.FileSystem represents the client interface to a filesystem in Hadoop, and there are several concrete implementations.
 
-    On actual hadoop cluster, input and output files are kept in HDFS.
+HDFS
 
- You can run the this main class from IntelliJ also.
+    HDFS is built around the idea that the most efficient data processing pattern is a write-once, read-many-times pattern.
 
- Somehow, I could not make hadoop work properly in my local mac. So, I used 'Cloudera Hadoop VM' on 'VMWare Fusion for Mac'.
- Cloudera Hadoop VM has all installed and configured for Hadoop and and its Ecosystem libraries and tools.
- You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Clouder Hadoop on VMWare'
+    When you put a file in HDFS, it is divided into blocks. Each bock has a default size of 128 MB.
+    Each block is stored on different DataNode and its replica are stored on other DataNodes.
+    Default size of InputSplit for a mapper is the size of HDFS block. Later, you will see the disadv of keeping it different than block size.
 
- When you run the job, you see some important information about the job.
+    Formula to decide split size=max(mapred.min.split.size, min(mapred.max.split.size, dfs.block.size)).
+    So, you can control split size using mapred.min.split.size.
 
-    For example, we can see that the job was given an ID of job_local26392882_0001, and it ran one map task and one reduce task (with the following IDs: attempt_local26392882_0001_m_000000_0 and attempt_local26392882_0001_r_000000_0).
-    Knowing the job and task IDs can be very useful when debugging MapReduce jobs.
+    Filesystem blocks are typically a few kilobytes in size, whereas disk blocks are normally 512 bytes.
+    HDFS, too, has the concept of a block, but it is a much larger unit—128 MB by default.
+    (IMP) Unlike a filesystem for a single disk, a file in HDFS that is smaller than a single block does not occupy a full block’s worth of under‐ lying storage. (For example, a 1 MB file stored with a block size of 128 MB uses 1 MB of disk space, not 128 MB.)
 
-    The last section of the output, titled “Counters,” shows the statistics that Hadoop generates for each job it runs.
+    (IMP) Why Is a Block in HDFS So Large?
+    HDFS blocks are large compared to disk blocks, and the reason is to minimize the cost of seeks. If the block is large enough, the time it takes to transfer the data from the disk can be significantly longer than the time to seek to the start of the block. Thus, trans‐ ferring a large file made of multiple blocks operates at the disk transfer rate.
+    A quick calculation shows that if the seek time is around 10 ms and the transfer rate is 100 MB/s, to make the seek time 1% of the transfer time, we need to make the block size around 100 MB. The default is actually 128 MB, although many HDFS installations use larger block sizes. This figure will continue to be revised upward as transfer speeds grow with new generations of disk drives.
+    This argument shouldn’t be taken too far, however. Map tasks in MapReduce normally operate on one block at a time, so if you have too few tasks (fewer than nodes in the cluster), your jobs will run slower than they could otherwise.
 
-    These are very useful for checking whether the amount of data processed is what you expected. For example, we can follow the number of records that went through the system: five map input records produced five map output records (since the mapper emitted one output record for each valid input record), then five reduce input records in two groups (one for each unique key) produced two reduce output records.
+    Like its disk filesystem cousin, HDFS’s fsck command understands blocks. For example, running:
+        % hdfs fsck / -files -blocks
+    will list the blocks that make up each file in the filesystem.
 
-    The output was written to the output directory, which contains one output file per reducer.
-    The job had a single reducer, so we find a single file, named part-r-00000
+    Seek Time is measured defines the amount of time it takes a hard drive's read/write head to find the physical location
+    of a piece of data on the disk.
+    The disk transfer rate (sometimes called media rate) is the speed at which data is transferred to and from the disk media
+    (actual disk platter) and is a function of the recording frequency. It is generally described in megabytes per second (MBps).
+
+    NameNode, ClientNode, DataNode, SecondaryNameNode
+        NameNode:
+            NameNode is a master node that keeps meta data of blocks stored in DataNodes.
+            Secondary NameNode is a backup for NameNode. It doesn't start working until primary NameNode goes down.
+            This is to avoid SPOF of NameNode.
+
+            NameNode manages the File System's namespace/meta-data/file blocks
+            - Runs on 1 machine to several machines
+            - It maintains 'Namespace Image(fsimage)' and 'Edit Logs'.
+            Namespace Image has all metadata like block information, permissions, data node information etc.
+            Edit Logs has all activities.  (VERY IMPORTANT)
+            It is recommended to have 1GB main memory in NameNode for million storage blocks.
+
+        ClientNode:
+            A client accesses the filesystem on behalf of the user by communicating with the name‐ node and datanodes. The client presents a filesystem interface similar to a Portable Operating System Interface (POSIX), so the user code does not need to know about the namenode and datanodes to function.
+
+        DataNode:
+            Datanodes are the workhorses of the filesystem. They store and retrieve blocks when they are told to (by clients or the namenode), and they report back to the namenode periodically with lists of blocks that they are storing.
+
+        NameNode Failover (High Availability of NameNode):
+
+            Without the namenode, the filesystem cannot be used. In fact, if the machine running the namenode were obliterated, all the files on the filesystem would be lost since there would be no way of knowing how to reconstruct the files from the blocks on the datanodes.
+            For this reason, it is important to make the namenode resilient to failure, and Hadoop provides two mechanisms for this.
+
+                1) The first way is to back up the files that make up the persistent state of the filesystem metadata.
+                Hadoop can be configured so that the namenode writes its persistent state to multiple filesystems. These writes are synchronous and atomic.
+                The usual configuration choice is to write to local disk as well as a remote NFS mount.
+
+                2) It is also possible to run a secondary namenode, which despite its name does not act as a namenode.
+                (IMP) Its main role is to periodically merge the namespace image with the edit log to prevent the edit log from becoming too large.
+                The secondary namenode usually runs on a separate physical machine because it requires plenty of CPU and as much memory as the namenode to perform the merge.
+                It keeps a copy of the merged name‐space image, which can be used in the event of the namenode failing. However, the state of the secondary namenode lags that of the primary, so in the event of total failure of the primary, data loss is almost certain.
+                The usual course of action in this case is to copy the namenode’s metadata files that are on NFS to the secondary and run it as the new primary.
+
+            Hadoop 2 remedied this situation by adding support for HDFS high availability (HA). It requires following configurations.
+
+                1) Shared Edit Logs:
+                You can have one active namenode and multiple standby namenodes. You need to keep common storage between these namenodes for storing Edit Logs.
+                When new entry is added in Edit Log, all namenodes will update their Namespace Image.
+                For this shared edit logs, there are two solutions:
+                    - NFS filer
+                    - quorum journal manager (QJM).
+                    The QJM is a dedicated HDFS implementation, designed for the sole purpose of providing a highly available edit log, and is the recommended choice for most HDFS installations.
+                    The QJM runs as a group of journal nodes, and each edit must be written to a majority of the journal nodes.
+                    Typically, there are three journal nodes, so the system can tolerate the loss of one of them.
+                    This arrangement is similar to the way ZooKeeper works, although it is important to realize that the QJM implementation does not use ZooKeeper.
+                    (Note, however, that HDFS HA does use ZooKeeper for electing the active namenode, as explained in the next section.)
+                2) Datanodes must send block reports to both namenodes because the block mappings are stored in a namenode’s memory, and not on disk.
+                3) Clients must be configured to handle namenode failover, using a mechanism that is transparent to users.
+                4) The secondary namenode’s role is subsumed by the standby, which takes periodic checkpoints of the active namenode’s namespace.
+
+                If the active namenode fails, the standby can take over very quickly (in a few tens of seconds)
+
+           Failover Controller and Fencing
+
+                Failover Controller:
+
+                    Zookeeper is used as Failover Controller to elect a new primary namenode in case of current primary namenode fails.
+                    graceful failover - Failover may also be initiated manually by an administrator for some routing maintenance.
+                    ungraceful failover - primary namenode goes down due to some reason.
+                    Both the cases are handled very well by Zookeeper.
+
+                Fencing:
+
+                    Sometimes, it is impossible to be sure that the failed namenode has stopped running. For example, a slow network or a network partition can trigger a failover transition.
+                    Even though the previously active namenode is still running and thinks it is still the active namenode.
+                    The HA implementation goes to great lengths to ensure that the previously active namenode is prevented from doing any damage and causing corruption—a method known as fencing.
+
+        ClientNode Failure:
+
+            In you application, you can configure list of all namenodes. This should be used as a failover when clientnode goes down. Your application can directly connect to one of the available namenodes instead of going through clientnode.
+
+    HDFS Federation:
+
+        The namenode keeps a reference to every file and block in the filesystem in memory, which means that on very large clusters with many files, memory becomes the limiting factor for scaling HDFS federation, introduced in the 2.x release series, allows a cluster to scale by adding namenodes, each of which manages a portion of the filesystem namespace.
+        For example, one namenode might manage all the files rooted under /user, say, and a second name‐ node might handle files under /share.
+
+    HDFS commandline commands:
+
+        https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/FileSystemShell.html
+
+        The FS shell is invoked by: bin/hadoop fs <args>
+
+        look at -copyFromLocal, -copyToLocal, -mkdir, -ls, -appendToFile commands. They are frequently used.
+
+        hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost/user/tom/quangle.txt
+
+        In fact, we could have omitted the scheme and host of the URI and picked up the default, hdfs://localhost, as specified in core-site.xml:
+
+        hadoop fs -copyFromLocal input/docs/quangle.txt /user/tom/quangle.txt
+
+        If there fs.default.name is set in core-site.xml,
+
+            hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost:9000/user/tom/quangle.txt
+            is same as
+            hadoop fs -appendToFile input/docs/quangle.txt /user/tom/quangle.txt
+            or
+            hadoop fs -appendToFile input/docs/quangle.txt file:///user/tom/quangle.txt
+
+
+        core-site.xml
+
+            <property>
+                <name>fs.default.name</name>
+                <value>hdfs://localhost:9000</value> <!-- This is a URI using which HDFS files can be located-->
+            </property>
+
+        hdfs-site.xml  --- all hdfs related configuration
+
+            <configuration>
+                <property>
+                    <name>dfs.data.dir</name> --- hdfs datanode data will be stored at this location
+                    <value>/usr/hadoop/dfs/data/</value>  ----- should have chmod 755 permissions to data dir. 777 permissions won't work. http://supunk.blogspot.com/2013/04/starting-hadoop-setting-datanode.html
+                </property>
+                <property>
+                    <name>dfs.name.dir</name> --- hdfs namenode data (editlogs) will be stored at this location
+                    <value>/usr/hadoop/dfs/name/</value>  ----- chmod 777 permissions will work for name node
+                </property>
+                <property>
+                    <name>dfs.replication</name>
+                    <value>1</value>
+                </property>
+            </configuration>
+
+        mapred-site.xml --- all mapred related configurations
+
+            <property>
+                <name>mapred.job.tracker</name>
+                <value>localhost:9001</value>
+            </property>
+
+
+        If you want to access the normal file system on hdfs node
+        hadoop fs -ls file:/// --- it will list all folders and files under root node
+
+
+    AWS EMR (Elastic MapReduce) Service:
+
+        At this point in time, AWS EMR (Elastic MapReduce) Service doesn’t provide facility of NameNode failover.
+        If the master node goes down, your cluster will be terminated and you’ll have to rerun your job. Amazon EMR currently does not support automatic failover of the
+         master nodes or master node state recovery. In case of master node failure, the AWS Management console displays “The master node was terminated” message
+        which is an indicator for you to start a new cluster. Customers can instrument check pointing in their clusters to save intermediate data (data created in the middle of
+        a cluster that has not yet been reduced) on Amazon S3. This will allow resuming the cluster from the last check point in case of failure.
+
+
+MapReduce
+
+    MapReduce has two important programs - Job Tracker and Task tracker.
+    Job Tracker is on master node (can be different than HDFS' NameNode).
+    Task Tracker runs on every single DataNode of HDFS.
+
+                                                Traditional RDBMS				MapReduce
+
+        Data size Access Updates Transactions	Gigabytes						Petabytes
+        Access									Interactive and batch			Batch
+        Updates									Read and write many times ACID	Write once, read many times
+        Transactions							ACID							None
+        Structure								Schema-on-write					Schema-on-read
+        Integrity								High							Low
+        Scaling									Nonlinear						Linear
+
+        However, the differences between relational databases and Hadoop systems are blurring.
+        Relational databases have started incorporating some of the ideas from Hadoop, and from the other direction, Hadoop systems such as Hive are becoming more interactive (by moving away from MapReduce) and adding features like indexes and transactions that make them look more and more like traditional RDBMSs.
+
+        Hadoop works well on unstructured or semi-structured data because it is designed to interpret the data at processing time (so called schema-on-read).
+
+        Data Locality:
+        Hadoop tries to co-locate the data with the compute nodes, so data access is fast because it is local.6 This feature, known as data locality, is at the heart of data processing in Hadoop and is the reason for its good performance.
+        MapReduce function runs on the nodes where data resides. This avoids network latency for function to read data for processing.
+
+        Shared-nothing architecture:
+        Coordinating the processes in a large-scale distributed computation is a challenge.
+        The hardest aspect is gracefully handling partial failure—when you don’t know whether or not a remote process has failed—and still making progress with the overall computation.
+        Distributed processing frameworks like MapReduce spare the programmer from having to think about failure, since the implementation detects failed tasks and reschedules replacements on machines that are healthy.
+        MapReduce is able to do this because it is a shared-nothing architecture, meaning that tasks have no dependence on one other. (This is a slight oversimplification, since the output from mappers is fed to the reducers, but this is under the control of the MapReduce system; in this case, it needs to take more care rerunning a failed reducer than rerunning a failed map, because it has to make sure it can retrieve the necessary map outputs and, if not, regenerate them by running the relevant maps again.)
+
+        Example of MapReduce data structure:
+        pg 23
+        Mapper is given input data in the format of key-value (offset of line-line text).
+        Mapper extracts necessary information from the input and creates key-value pairs.
+        Before sending this output of mappers to reducer(s), the are sorted and grouped by keys (Shuffling).
+
+        e.g. input to Mapper
+            (0, 0067011990999991950051507004...9999999N9+00001+99999999999...)
+            (106, 0043011990999991950051512004...9999999N9+00221+99999999999...)
+            (212, 0043011990999991950051518004...9999999N9-00111+99999999999...)
+            (318, 0043012650999991949032412004...0500001N9+01111+99999999999...)
+
+        Output of Mapper
+            year-temperature pairs
+
+            (1950, 0)
+            (1950, 22)
+            (1950, −11)
+            (1949, 111)
+            (1949, 78)
+
+        Sorted by keys and grouped
+            (1949, [111, 78])
+            (1950, [0, 22, −11])
+
+        Output of Reducer
+            Max temperature in a year
+            (1949, 111)
+            (1950, 22)
+
+        See Mapper example on pg 24
+
+        Rather than using built-in Java types, Hadoop provides its own set of basic types that are optimized for network serialization.
+        These are found in the org.apache.hadoop.io package. Here we use LongWritable, which corresponds to a Java Long, Text (like Java String), and IntWritable (like Java Integer).
+
+        See Reducer example on pg 26
+
+    The input types of the reduce function must match the output types of the map function: Text and IntWritable.
+
+     pg 23-27
+
+     Rather than using built-in Java types, Hadoop provides its own set of basic types that are op‐ timized for network serialization. These are found in the org.apache.hadoop.io pack‐ age. Here we use LongWritable, which corresponds to a Java Long, Text (like Java String), and IntWritable (like Java Integer).
+
+     The input types of the reduce function must match the output types of the map function: Text and IntWritable.
+
+     static addInputPath() method on FileInputFormat, and it can be a single file, a directory (in which case, the input forms all the files in that direc‐ tory), or a file pattern. As the name suggests, addInputPath() can be called more than once to use input from multiple paths.
+
+     The setOutputKeyClass() and setOutputValueClass() methods control the output types for the reduce function, and must match what the Reduce class produces. The map output types default to the same types, so they do not need to be set if the mapper produces the same types as the reducer (as it does in our case). However, if they are different, the map output types must be set using the setMapOutputKeyClass() and setMapOutputValueClass() methods.
+
+     The waitForCompletion() method on Job submits the job and waits for it to finish. The single argument to the method is a flag indicating whether verbose output is generated. When true, the job writes information about its progress to the console.
+     The return value of the waitForCompletion() method is a Boolean indicating success (true) or failure (false), which we translate into the program’s exit code of 0 or 1.
+
+     Commands to run this job
+        hadoop jar ./target/SampleHadoopProject-1.0-SNAPSHOT.jar hadoop.WordCount ./input ./output
+
+        On actual hadoop cluster, input and output files are kept in HDFS.
+
+     You can run the this main class from IntelliJ also.
+
+     Somehow, I could not make hadoop work properly in my local mac. So, I used 'Cloudera Hadoop VM' on 'VMWare Fusion for Mac'.
+     Cloudera Hadoop VM has all installed and configured for Hadoop and and its Ecosystem libraries and tools.
+     You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Clouder Hadoop on VMWare'
+
+     When you run the job, you see some important information about the job.
+
+        For example, we can see that the job was given an ID of job_local26392882_0001, and it ran one map task and one reduce task (with the following IDs: attempt_local26392882_0001_m_000000_0 and attempt_local26392882_0001_r_000000_0).
+        Knowing the job and task IDs can be very useful when debugging MapReduce jobs.
+
+        The last section of the output, titled “Counters,” shows the statistics that Hadoop generates for each job it runs.
+
+        These are very useful for checking whether the amount of data processed is what you expected. For example, we can follow the number of records that went through the system: five map input records produced five map output records (since the mapper emitted one output record for each valid input record), then five reduce input records in two groups (one for each unique key) produced two reduce output records.
+
+        The output was written to the output directory, which contains one output file per reducer.
+        The job had a single reducer, so we find a single file, named part-r-00000
+
+
+        For simplicity, the examples so far have used files on the local filesystem. However, to scale out, we need to store the data in a distributed filesystem (typically HDFS).
+
+        Mapper:
+            Hadoop runs the job by dividing it into tasks, of which there are two types: map tasks and reduce tasks.
+
+                - The tasks are scheduled using YARN and run on nodes in the cluster. If a task fails, it will be automatically rescheduled to run on a different node.
+                - Hadoop divides the input to a MapReduce job into fixed-size pieces called input splits, or just splits.
+                  Hadoop creates one map task for each split, which runs the user-defined map function for each record in the split.
+                - Having many splits means the time taken to process each split is small compared to the time to process the whole input.
+                  So if we are processing the splits in parallel, the processing is better load balanced when the splits are small, since a faster machine will be able to process proportionally more splits over the course of the job than a slower machine.
+                  Even if the machines are identical, failed processes or other jobs running concurrently make load balancing desirable, and the quality of the load balancing increases as the splits become more fine grained.
+
+                  On the other hand, if splits are too small, the overhead of managing the splits and map task creation begins to dominate the total job execution time.
+
+                  For most jobs, a good split size tends to be the size of an HDFS block, which is 128 MB by default, although this can be changed for the cluster (for all newly created files) or specified when each file is created.
+
+                  Hadoop does its best to run the map task on a node where the input data resides in HDFS, because it doesn’t use valuable cluster bandwidth. This is called the data locality optimization. Sometimes, however, all the nodes hosting the HDFS block replicas for a map task’s input split are running other map tasks, so the job scheduler will look for a free map slot on a node in the same rack as one of the blocks. Very occasionally even this is not possible, so an off-rack node is used, which results in an inter-rack network transfer. The three possibilities are illustrated in Figure 2-2.
+
+                  (IMP) It should now be clear why the optimal split size is the same as the block size:
+                  it is the largest size of input that can be guaranteed to be stored on a single node.
+                  If the split spanned two blocks, it would be unlikely that any HDFS node stored both blocks, so some of the split would have to be transferred across the network to the node running the map task, which is clearly less efficient than running the whole map task using local data.
+
+            Output of Mapper is stored on local disk. Why is this?
+            Map output is intermediate output: it’s processed by reduce tasks to produce the final output, and once the job is complete, the map output can be thrown away. So, storing it in HDFS with replication would be overkill. If the node running the map task fails before the map output has been consumed by the reduce task, then Hadoop will automatically rerun the map task on another node to re-create the map output.
+
+
+        Reducer:
+
+            Reduce tasks don’t have the advantage of data locality; the input to a single reduce task is normally the output from all mappers.
+            In the present example, we have a single reduce task that is fed by all of the map tasks.
+            (IMP) Therefore, the sorted map outputs have to be transferred across the network to the node where the reduce task is running, where they are merged and then passed to the user-defined reduce function.
+
+            The output of the reduce is normally stored in HDFS for reliability.
+            Thus, writing the reduce output does consume network bandwidth, but only as much as a normal HDFS write pipeline consumes.
+
+        Multiple Reducers:
+
+            Output from mappers are sorted and grouped. This grouped records are Partitioned between multiple reducers.
+
+            The number of reduce tasks is not governed by the size of the input, but instead is specified independently.
+
+        See the diagram of map reduce flow on page 33.
+
+        Combiner:
+
+            Combiner’s code is exactly same as Reducer and it does exactly the same thing as Reducer.
+            The only difference is that Combiner is on the same node where Mapper is.
+            By doing reduction of Mapper’s output using Combiner reduces total output to be transferred through network to a Reducer. This is a key advantage of Combiner.
+
 
 */
 public class WordCount {
@@ -89,6 +408,7 @@ public class WordCount {
         // Setup MapReduce
         job.setMapperClass(WordCountMapper.class);
         job.setReducerClass(WordCountReducer.class);
+        //job.setCombinerClass(WordCountReducer.class);
         job.setNumReduceTasks(1);
 
         // Specify key / value
