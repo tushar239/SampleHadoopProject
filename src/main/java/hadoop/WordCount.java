@@ -31,11 +31,26 @@ import java.io.IOException;
  Commands to run this job
     hadoop jar ./target/SampleHadoopProject-1.0-SNAPSHOT.jar hadoop.WordCount ./input ./output
 
+    On actual hadoop cluster, input and output files are kept in HDFS.
+
  You can run the this main class from IntelliJ also.
 
  Somehow, I could not make hadoop work properly in my local mac. So, I used 'Cloudera Hadoop VM' on 'VMWare Fusion for Mac'.
  Cloudera Hadoop VM has all installed and configured for Hadoop and and its Ecosystem libraries and tools.
  You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Clouder Hadoop on VMWare'
+
+ When you run the job, you see some important information about the job.
+
+    For example, we can see that the job was given an ID of job_local26392882_0001, and it ran one map task and one reduce task (with the following IDs: attempt_local26392882_0001_m_000000_0 and attempt_local26392882_0001_r_000000_0).
+    Knowing the job and task IDs can be very useful when debugging MapReduce jobs.
+
+    The last section of the output, titled “Counters,” shows the statistics that Hadoop generates for each job it runs.
+
+    These are very useful for checking whether the amount of data processed is what you expected. For example, we can follow the number of records that went through the system: five map input records produced five map output records (since the mapper emitted one output record for each valid input record), then five reduce input records in two groups (one for each unique key) produced two reduce output records.
+
+    The output was written to the output directory, which contains one output file per reducer.
+    The job had a single reducer, so we find a single file, named part-r-00000
+
 */
 public class WordCount {
 
