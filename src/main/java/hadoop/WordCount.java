@@ -26,12 +26,12 @@ Hadoop File System  (pg 53)
 
     Hadoop can work with many file systems, not just HDFS. HDFS is a preferred one because of its unique feature of creating large blocks.
     Hadoop can work
-    - Local FS   ----- HDFS in Local FileSystem
-    - HDFS       ----- HDFS in distributed FileSystem
-    - WebHDFS    ----- HDFS over the web
+    - Local FS
+    - HDFS
+    - WebHDFS
     - HAR
     - View
-    - FTP        ----- HDFS access using FTPClient
+    - FTP
     - S3   ---- AWS EMR allows you to use S3
     - Azure
     - Swift
@@ -53,7 +53,7 @@ Hadoop File System  (pg 53)
     Similar information is there in a book on pg 56
     See HdfsAccessOnDistributedEnv.java
 
-HDFS
+HDFS (Hadoop Distributed File System)
 
     HDFS is built around the idea that the most efficient data processing pattern is a write-once, read-many-times pattern.
 
@@ -159,9 +159,44 @@ HDFS
         The namenode keeps a reference to every file and block in the filesystem in memory, which means that on very large clusters with many files, memory becomes the limiting factor for scaling HDFS federation, introduced in the 2.x release series, allows a cluster to scale by adding namenodes, each of which manages a portion of the filesystem namespace.
         For example, one namenode might manage all the files rooted under /user, say, and a second name‐ node might handle files under /share.
 
+    Local File System vs Hadoop File System (HDFS):
+    (file:// scheme vs hdfs:// scheme for commands)
+
+        https://www.youtube.com/watch?v=D0n90c4cjD8
+
+        By connecting to a node, you can access its local file system using normal
+        Linux commands like ls, cat, vim etc.
+            or using file scheme with 'hadoop fs' command
+        hadoop fs -ls file:///.../...
+
+        Remember, you are not accessing HDFS files using file:/// scheme. You are accessing Local File System.
+
+        To access HDFS, you need to use hdfs scheme
+
+            hadoop fs -ls hdfs://namenodehost/<default dir is /user/<username> >
+            default hdfs directory that will be accessed will be /user/<username with which OS is booted>, but you can provide any dir name
+            namenode host will be localhost, if you are connecting to namenode machine to run this command.
+            it will be namenode's ip address, if you are connecting from outside hadoop cluster.
+            this host name will converted to HDFS's url by looking into core-site.xml's fs.defaultFS configuration.
+
+            If you are in the node of a hadoop cluster,
+                You can also use
+                    hadoop fs -ls <default dir is /user/<username> >
+                    or
+                    hadoop fs -ls hdfs://localhost/<default dir is /user/<username> >   (hdfs://localhost/ will not work. it will connect to local file system)
+                It will be converted to
+                    hadoop fs -ls hdfs://<core-site.xml's namenode host:port>/<default dir is /user/<username> >
+
+           From outside hadoop cluster,
+                You can use
+                    hadoop fs -ls hdfs://<ip address of namenode>/<default dir is /user/<username> >
+
+
     HDFS commandline commands:
 
         https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/FileSystemShell.html
+
+        https://www.youtube.com/watch?v=oBqju4ZkD58
 
         The FS shell is invoked by:
         bin/hadoop fs <args>
@@ -170,25 +205,40 @@ HDFS
 
         look at -copyFromLocal, -copyToLocal, -mkdir, -ls, -appendToFile, -put, -get commands. They are frequently used.
 
-        hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost/user/tom/quangle.txt
+        You can create a directory in hdfs using
+        hadoop fs -mkdir ...
+        but you cannot create a file in hdfs directly. you need to create it in local file system and put it in hdfs.
+
+
+        hadoop fs -copyFromLocal input/docs/input.txt hdfs://localhost/user/tom/input.txt
 
         In fact, we could have omitted the scheme and host of the URI and picked up the default, hdfs://localhost, as specified in core-site.xml:
 
-        hadoop fs -copyFromLocal input/docs/quangle.txt /user/tom/quangle.txt
+        hadoop fs -copyFromLocal input/docs/input.txt /user/tom/input.txt
 
-        If there fs.default.name is set in core-site.xml,
+        If you use
 
-            hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost:9000/user/tom/quangle.txt
+        hadoop fs -copyFromLocal input/docs/input.txt file:///.../...
+        then it will copy the file in local file system of the node where you are running this command. It is not copied in HDFS.
+
+        If there fs.defaultFS is set in core-site.xml,
+
+            hadoop fs -copyFromLocal input/docs/input.txt hdfs://localhost:9000/user/tom/input.txt
             is same as
-            hadoop fs -appendToFile input/docs/quangle.txt /user/tom/quangle.txt
-            or
-            hadoop fs -appendToFile input/docs/quangle.txt file:///user/tom/quangle.txt
+            hadoop fs -appendToFile input/docs/input.txt /user/tom/input.txt
 
-            hadoop fs -put <from location> ----- this will ask namenode to put a file into data nodes. namenode will chunk this file into blocks and then put it into datanodes.
+            hadoop fs -put <from location from your local machine> <to location in hdfs> ----- this will ask namenode to put a file into data nodes. namenode will chunk this file into blocks and then put it into datanodes.
+            hadoop fs -copyFromLocal ...    ---- same as -put command
+            hadoop fs -moveFromLocal ...    ---- cut and past
+            If source is a file then destination can be a file or directory
+            If source is a directory then destination has to be a directory
 
-            hadoop fs -get <hdfs locaiton of file>  <local filesystem location>
+            hadoop fs -get <hdfs location of file>  <local filesystem location>
             hdfs dfs -get /user/hadoop/file localfile  ---- copies a file from hdfs to local filesystem
             hdfs dfs -get hdfs://namenodehost:port/user/hadoop/file localfile
+
+            hadoop fs -copyToLocal ...
+            hadoop fs -moveToLocal ...
 
         core-site.xml
 
