@@ -26,18 +26,32 @@ Hadoop File System  (pg 53)
 
     Hadoop can work with many file systems, not just HDFS. HDFS is a preferred one because of its unique feature of creating large blocks.
     Hadoop can work
-    - Local FS
-    - HDFS
-    - WebHDFS
+    - Local FS   ----- HDFS in Local FileSystem
+    - HDFS       ----- HDFS in distributed FileSystem
+    - WebHDFS    ----- HDFS over the web
     - HAR
     - View
-    - FTP
+    - FTP        ----- HDFS access using FTPClient
     - S3   ---- AWS EMR allows you to use S3
     - Azure
     - Swift
 
     Hadoop has an abstract notion of filesystems, of which HDFS is just one implementation.
     The Java abstract class org.apache.hadoop.fs.FileSystem represents the client interface to a filesystem in Hadoop, and there are several concrete implementations.
+
+    https://tutorials.techmytalk.com/2014/08/16/hadoop-hdfs-java-api/
+
+    Hadoop’s org.apache.hadoop.fs.FileSystem is generic class to access and manage HDFS files/directories located in distributed environment. File’s content stored inside datanode with multiple equal large sizes of blocks (e.g. 128 MB), and namenode keep the information of those blocks and Meta information. FileSystem read and stream by accessing blocks in sequence order. FileSystem first get blocks information from NameNode then open, read and close one by one. It opens first blocks once it complete then close and open next block. HDFS replicate the block to give higher reliability and scalability and if client is one of the datanode then it tries to access block locally if fail then move to other cluster datanode.
+    FileSystem uses FSDataOutputStream and FSDataInputStream to write and read the contents in stream. Hadoop has provided various implementation of FileSystem as described below:
+
+    1) DistributedFileSystem: To access HDFS File in distributed environment
+    2) LocalFileSystem: To access HDFS file in Local system
+    3) FTPFileSystem: To access HDFS file FTP client
+    4) WebHdfsFileSystem: To access HDFS file over the web
+
+    You can see above url to see how to write Java code to access HDFS in different File Systems.
+    Similar information is there in a book on pg 56
+    See HdfsAccessOnDistributedEnv.java
 
 HDFS
 
@@ -149,9 +163,12 @@ HDFS
 
         https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/FileSystemShell.html
 
-        The FS shell is invoked by: bin/hadoop fs <args>
+        The FS shell is invoked by:
+        bin/hadoop fs <args>
+        or
+        hdfs dfs <args>
 
-        look at -copyFromLocal, -copyToLocal, -mkdir, -ls, -appendToFile commands. They are frequently used.
+        look at -copyFromLocal, -copyToLocal, -mkdir, -ls, -appendToFile, -put, -get commands. They are frequently used.
 
         hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost/user/tom/quangle.txt
 
@@ -167,13 +184,28 @@ HDFS
             or
             hadoop fs -appendToFile input/docs/quangle.txt file:///user/tom/quangle.txt
 
+            hadoop fs -put <from location> ----- this will ask namenode to put a file into data nodes. namenode will chunk this file into blocks and then put it into datanodes.
+
+            hadoop fs -get <hdfs locaiton of file>  <local filesystem location>
+            hdfs dfs -get /user/hadoop/file localfile  ---- copies a file from hdfs to local filesystem
+            hdfs dfs -get hdfs://namenodehost:port/user/hadoop/file localfile
 
         core-site.xml
 
             <property>
-                <name>fs.default.name</name>
-                <value>hdfs://localhost:9000</value> <!-- This is a URI using which HDFS files can be located-->
+                <name>fs.defaultFS</name> fs.default.name is deprecated
+                <value>hdfs://localhost:9000</value> <!-- NameNode URI. This is a URI using which HDFS files can be located-->
             </property>
+
+            fs.defaultFS Specifies the NameNode and the default file system, in the form
+            hdfs://<namenode host>:<namenode port>/.
+            The default value is file///.
+            The default file system is used to resolve relative paths
+            for example, if fs.defaultFS is set to hdfs://mynamenode/, the relative URI /mydir/myfile resolves to hdfs://mynamenode/mydir/myfile.
+
+            If you want to access the normal file system on NameNode
+            hadoop fs -ls file:/// --- it will list all folders and files under root node (not sure though ???????)
+
 
         hdfs-site.xml  --- all hdfs related configuration
 
@@ -199,9 +231,6 @@ HDFS
                 <value>localhost:9001</value>
             </property>
 
-
-        If you want to access the normal file system on hdfs node
-        hadoop fs -ls file:/// --- it will list all folders and files under root node
 
 
     AWS EMR (Elastic MapReduce) Service:
@@ -399,6 +428,7 @@ public class WordCount {
         Path outputDir = new Path("./SampleHadoopProject/output");
 
         // Create configuration
+        // this configuration can be modified with properties that you mention in hadoop's conf files like core-site.xml, hdfs-site.xml etc. Default configuration will be read from these files, but you can override them here, if you want.
         Configuration conf = new Configuration(true);
 
         // Create job
