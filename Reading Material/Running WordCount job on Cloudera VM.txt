@@ -1,0 +1,112 @@
+Youtube Video:
+https://www.youtube.com/watch?v=p7uCyFfWL-c&list=PLf0swTFhTI8rnNRnVz6n-f1d3ZCDtgqRq&index=2
+
+Download VMWare Fusion 10
+https://www.vmware.com/products/fusion.html
+https://www.youtube.com/watch?v=iACiQEMOJ7E
+key - FY34U-4PY9N-08DMQ-C7YGZ-MLUYA
+
+Download Cloudera QuickStart VM
+https://www.cloudera.com/downloads/quickstart_vms/5-12.html
+Add a VM file cloudera-quickstart-vm-5.12.0-0-vmware.vmx to VMWare Fusion
+
+
+UserName and Password of Cloudera VM: cloudera/cloudera
+run 'ifconfig' command in VM's terminal and take inet address.
+
+ssh from your machine 'ssh cloudera@<vm ip address>'
+password: cloudera
+
+>hadoop version 
+>cd /etc/hadoop/conf
+>cat core-site.xml
+
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://quickstart.cloudera:8020</value>
+  </property>
+  
+hdfs can be accessed using this url
+
+e.g. hadoop fs -ls hdfs://quickstart.cloudera.8020
+
+-rw-r--r--   1 cloudera cloudera 236 2017-10-28 16:47 hdfs://quickstart.cloudera:8020/user/cloudera/input
+drwxr-xr-x   - cloudera cloudera 0   2017-10-28 17:39 hdfs://quickstart.cloudera:8020/user/cloudera/output
+
+hadoop fs -ls
+
+fs.defaultFS Specifies the NameNode and the default file system, in the form hdfs://<namenode host>:<namenode port>/. 
+The default value is file///. The default file system is used to resolve relative paths; 
+for example, if fs.default.name or fs.defaultFS is set to hdfs://mynamenode/, the relative URI /mydir/myfile resolves to hdfs://mynamenode/mydir/myfile. 
+
+
+These files are stored in hdfs.
+Where does /user/cloudera path come from????????
+
+
+From your machine's terminal,
+	Copy input data for your MapReduce program using
+	scp input.txt cloudera@<vm ip address>:/home/cloudera/wordcount/input/
+	e.g. scp /Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/input cloudera@192.168.31.128:/home/cloudera/wordcount/input/
+
+
+From SSHed terminal,
+	put input data file into HDFS using
+	hadoop fs -put <from location>
+	hadoop fs -put /home/cloudera/wordcount/input/input
+
+	Using 'hadoop fs -ls' command, you can see files in HDFS.
+	or 'hadoop fs -ls hdfs://quickstart.cloudera.8020
+	
+	-rw-r--r--   1 cloudera cloudera 236 2017-10-28 16:47 hdfs://quickstart.cloudera:8020/user/cloudera/input
+	drwxr-xr-x   - cloudera cloudera 0   2017-10-28 17:39 hdfs://quickstart.cloudera:8020/user/cloudera/output
+	
+
+	For more fs commands, you can do
+	hadoop fs
+
+In Cloudera VM, if you open a browser, you can see all bookmarks required to connect different applications available in Hadoop Ecosystem. 
+
+Hue tool:
+	It is a single point of landing to connect to many hadoop ecosystem tools.
+	Connect to Hue inside Cloudera VM using
+		http://<clouder vm ip address>:8888/
+		from your machine's browser
+		username/password=clouder/cloudera
+
+		Go to HDFS option.
+		you can upload input files using browser in HDFS using Hue.
+
+Connect to NameNode:
+	NameNode has meta data of how yout hdfs files are distributed on data nodes.
+	http://<clouder vm ip address>:50070/
+	Utilities->Browse the file system
+	Go to /user/clouder, you will see your file in HDFS.
+	you can click on that file and you will see how many blocks are created for that file.
+	Each block is of size 128 MB. If your file size is 720 MB, then it will be divided into 5 blocks on different data nodes and replicated as per the Replication Factor you configure in real word hadoop cluster. In our example, there is only one DataNode, so all blocks will be stored on the same DataNode.
+
+Copy your WordCount MapReduce job jar file to cloudera vm
+	scp <jar file location on your machine> cloudera@<vm ip address>:<location on cloudera vm>
+
+	scp /Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/target/SampleHadoopProject-1.0-SNAPSHOT.jar cloudera@192.168.31.128:/home/cloudera/wordcount/jar/
+
+Run this command to run WordCount job from SSHed terminal for cloudera
+
+	hadoop jar /home/cloudera/wordcount/jar/SampleHadoopProject-1.0-SNAPSHOT.jar hadoop.WordCount /user/cloudera/input /user/cloudera/output 
+
+	hadoop jar <wordcount job jar location> <wordcount job main class> <input file folder place in HDFS> <output folder place in HDFS>
+
+	Output of all Mapper programs on different data nodes and Reduce program are stored in HDFS only.
+
+Copy job's output from HDFS to VM's file system
+	hadoop fs -get <output directory location in HDFS> <directory location in VM>
+	hadoop fs -get /user/cloudera/output /home/cloudera/wordcount/outputcopiedfromhdfs
+
+	You can go to NameNode url in browser in VM and from there also you can dowonload output files to VM and from VM you can copy it to your machine.
+
+Multi Node Hadoop Cluster:
+	I have downloaded youtube videos showing how can you set up multiple nodes in hadoop cluster.
+
+
+Hadoop Tutorial:
+https://www.cloudera.com/documentation/other/tutorial/CDH5/topics/Hadoop-Tutorial.html	

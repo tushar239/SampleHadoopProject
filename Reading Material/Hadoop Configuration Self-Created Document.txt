@@ -1,0 +1,157 @@
+Cloudera Hadoop VM
+——————————————————
+
+See “hadoop distributions/Clouder Hadoop on VMWare/Running WordCount job on Cloudera VM.txt” folder for instructions
+
+Setup Hadoop on Ubuntu
+----------------------
+
+Install Oracle Virtual Machine on your laptop
+	https://www.youtube.com/watch?v=CkDd6jClqEE
+To see VM in fullscreen follow below video
+	https://www.youtube.com/watch?v=v2UC76F0TOc
+
+Install java 8
+http://www.webupd8.org/2012/09/install-oracle-java-8-in-ubuntu-via-ppa.html
+	
+	sudo add-apt-repository ppa:webupd8team/java
+	sudo apt-get update
+	sudo apt-get install oracle-java8-installer
+
+	>>java -version
+	java version "1.8.0_31"
+	Java(TM) SE Runtime Environment (build 1.8.0_31-b13)
+	Java HotSpot(TM) 64-Bit Server VM (build 25.31-b07, mixed mode)
+
+	setting up java env variables
+	sudo apt-get install oracle-java8-set-default
+
+Install hadoop1.2.1
+	Download tar file from hadoop site
+	do "tar -xvf ~/hadoop"
+
+Install gedit 
+	sudo apt-get install gedit	
+
+Go to ~/.bashrc (same as ~/.profile in mac)	and set up JAVA_HOME AND HADOOP_HOME
+	export JAVA_HOME="/usr/lib/jvm/java-8-oracle/jre/bin"
+	export PATH="$PATH:$JAVA_HOME/bin"
+	export HADOOP_HOME="~/hadoop/hadoop-1.2.1"
+	export PATH="$PATH:$HADOOP_HOME/bin"
+	
+Go to ~/hadoop/hadoop-1.2.1/conf
+	open hadoop-env.sh using 'gedit hadoop-env.sh'
+		add   export JAVA_HOME="/usr/lib/jvm/java-8-oracle/jre/bin"
+	configure core-site.xml,hdfs-site.xml,mapred-site.xml as mentioned in below section of 'Setup Hadoop on Mac'
+	
+
+Download IntelliJ
+
+
+-----------------------------------------------------------------------------------
+
+
+Setup Hadoop on Mac
+
+	http://magpiehall.com/how-to-install-hadoop-on-mac-os-x/
+
+	http://boatboat001.com/index.php/blogs/view/setting_up_a_hadoop_cluster_under_mac_os_x_mountain
+
+
+Install homebrew
+
+	ruby -e "$(curl -fsSL https://raw.github.com/mxcl/homebrew/go)"
+
+Install hadoop from homebrew
+
+	brew install hadoop   ---- This will install latest hadoop version at /usr/local/Cellar
+
+To install prev version
+	brew search hadoop  ---- This will show all available versions of hadoop
+	brew install homebrew/versions/hadoop121   --- to install hadoop 1.2.1
+
+	Homebrew downloads libraries at "/Library/Caches/Homebrew". 
+
+Change some configurations
+Without these changes, hadoop will run on "Local(Standalone) mode" as described in https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html
+To set up a cluster in "Pseudo-Distributed mode", you need to do following configurations
+
+conf/core-site.xml
+
+	<property>
+		<name>fs.default.name</name>
+		<value>hdfs://localhost:9000</value> <!-- This is a URI using which HDFS files can be located-->
+	</property>
+	<property>
+		<name>fs.defaultFS</name>      <!-- I dont know why this is required, if fs.default.name is there-->
+		<value>hdfs://localhost:9000</value>
+	</property>
+	
+
+conf/hdfs-site.xml  --- all hdfs related configuration
+	
+	<configuration>
+		<property>
+			<name>dfs.data.dir</name> --- hdfs datanode data will be stored at this location
+			<value>/Users/chokst/hadoop/dfs/data/</value>  ----- should have chmod 755 permissions to data dir. 777 permissions won't work. http://supunk.blogspot.com/2013/04/starting-hadoop-setting-datanode.html
+		</property>
+		<property> 
+			<name>dfs.name.dir</name> --- hdfs namenode data (editlogs) will be stored at this location
+			<value>/Users/chokst/hadoop/dfs/name/</value>  ----- chmod 777 permissions will work for name node
+		</property>
+		<property>
+			<name>dfs.replication</name>
+			<value>1</value>
+		</property>
+	</configuration>
+
+conf/mapred-site.xml --- all mapred related configurations
+
+	<property>
+		<name>mapred.job.tracker</name>
+		<value>localhost:9001</value>
+	</property>
+
+
+~/.profile file
+
+	export JAVA_HOME=/Library/Java/JavaVirtualMachines/Current/Contents/Home
+	export HADOOP_HOME=/usr/local/Cellar/hadoop121/1.2.1
+	export PATH=$PATH:$HADOOP_HOME/bin
+	export HADOOP_CONF_DIR=$HADOOP_HOME/libexec/conf/
+
+
+go to hadoop-1.2.1's bin dir
+	bash hadoop namenode -format ---- This will erase all data from namenode dir
+	bash start-all.sh --- this will start all hadoop processes
+	jps ---- This should show all hadoop processes like NameNode,DataNode,JobTracker etc.
+		35592 Jps
+		35179 DataNode
+		35110 JobTracker
+		35111 TaskTracker
+		34958 NameNode
+		34137 SecondaryNameNode
+
+	If DataNode doesn't appear to be started then use below command
+		bash hadoop datanode
+
+	Every time you do any configuration changes, you MAY need to do following things
+		bash stop-all.sh
+		bash hadoop namenode -format    ---- This will erase all data from namenode dir
+		bash hadoop datanode -format	---- This will erase all data from datanode dir
+	
+On web browser navigate to http//localhost:50070/ and then to http://localhost:50030/ Make sure hadoop started properly.
+http://localhost:50030/ should forward to Hadoop Map/Reduce Administration page - http://localhost:50030/jobtracker.jsp
+http://localhost:50070/ should forward to Hadoop HDFS Administration page - http://localhost:50070/dfshealth.jsp NameNode 'localhost:9000'
+
+Test hadoop by running an example
+	hadoop-1.2.1>>bash bin/hadoop jar hadoop-examples-1.2.1.jar pi 10 100
+	
+
+
+
+
+
+
+
+

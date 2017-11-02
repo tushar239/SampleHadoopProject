@@ -59,7 +59,7 @@ Hadoop File System  (pg 53)
 
     You can see above url to see how to write Java code to access HDFS in different File Systems.
     Similar information is there in a book on pg 56
-    See HdfsAccessOnDistributedEnv.java
+    Read HdfsAccessOnDistributedEnvAndLocalFileSystemAccessExample.java
 
 HDFS (Hadoop Distributed File System)
 
@@ -306,8 +306,41 @@ HDFS (Hadoop Distributed File System)
         which is an indicator for you to start a new cluster. Customers can instrument check pointing in their clusters to save intermediate data (data created in the middle of
         a cluster that has not yet been reduced) on Amazon S3. This will allow resuming the cluster from the last check point in case of failure.
 
+    Anatomy of File Read and Write:
+        Read HdfsAccessOnDistributedEnvAndLocalFileSystemAccessExample.java
 
+    How DataNodes are chosen for replication? (pg 74)
+
+        See diagram on pg 74 of Book.
+
+        Hadoop’s default strategy is to place the first replica on the same node.  (IMP - it writes first replica on the same now where original block resides)
+        The second replica is placed on a different rack from the first (off-rack), chosen at random.
+        The third replica is placed on the same rack as the second, but on a different node chosen at random.
+
+    Parallel file/dir copying process using distcp command (pg 76)
+
+        hadoop distcp file1 file2
+        hadoop distcp dir1 dir2
+        hadoop distcp -update dir1 dir2
+
+        distcp is implemented as a MapReduce job where the work of copying is done by the maps that run in parallel across the cluster. There are no reducers. Each file is copied by a single map, and distcp tries to give each map approximately the same amount of data by bucketing files into roughly equal allocations.
+
+        A very common use case for distcp is for transferring data between two HDFS clusters.
+        hadoop distcp -update -delete -p hdfs://namenode1/foo hdfs://namenode2/foo
+
+        By default, up to 20 mappers are used, but this can be changed by specifying the -m argument to distcp.
+
+        Keeping HDFS cluster in balance:
+            For example, if you specified -m 1, a single map would do the copy, which apart from being slow and not using the cluster resources efficiently— would mean that the first replica of each block would reside on the node running the map (until the disk filled up). The second and third replicas would be spread across the cluster, but this one node would be unbalanced.
+            By having more maps than nodes in the cluster, this problem is avoided. For this reason, it’s best to start by running distcp with the default of 20 maps per node.
+
+            However, it’s not always possible to prevent a cluster from becoming unbalanced. Perhaps you want to limit the number of maps so that some of the nodes can be used by other jobs.
+            In this case, you can use the balancer tool to subsequently even out the block distribution across the cluster.
 MapReduce
+
+    YARN (Yet Another Resource Negotiator) (pg 79)
+
+        Read "Hadoop v1 vs Hadoop v2.docx"
 
     MapReduce has two important programs - Job Tracker and Task tracker.
     Job Tracker is on master node (can be different than HDFS' NameNode).

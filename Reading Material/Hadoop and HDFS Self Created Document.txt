@@ -1,0 +1,429 @@
+Hadoop Architecture
+-------------------
+Hadoop VS RDBMS
+
+	Hadoop is a distributed system where one file is distributed in blocks across many nodes
+	Hadoop is good for parallel processing (MapReduce)
+	Hadoop is good for files with millions of records (Big Data)
+	Hadoop uses commodity hardware (not necessarily cheap hardware)
+	Hardware failures are common in Hadoop.
+	Hadoop is good for WRITE ONCE AND READ MANY TIMES, so it is good for batch processing. Do not use Hadoop for Speed Layer/Service Layer in Lambda architecture. Use it for Batch layer.
+	Hadoop works well with the concept where you keep inserting the records, but never update or delete them (or delete them as housekeeping job)
+	If you are thinking that HIVE queries will work as fast as SQL, then you are wrong. They are way slower than SQL.
+
+	RDBMS is good, if you need normalized data
+	RDBMS is good, if you want ACID properties (Atomicity, Consistency, Isolation and Durability)
+	RDBMS is good when you need many writes and reads and deletes. So, works well as OLTP (Online Transaction Processing). OLTP is characterized by a large number of short on-line transactions (INSERT, UPDATE, DELETE). The main emphasis for OLTP systems is put on very fast query processing, maintaining data integrity in multi-access environments and an effectiveness measured by number of transactions per second. 
+	RDBMS doesn't scale well when amount of data is huge
+	RDBMS is very expensive
+
+http://www.tutorialspoint.com/hadoop/hadoop_introduction.htm
+
+Hadoop framework includes following four modules:
+
+Hadoop Common: These are Java libraries and utilities required by other Hadoop modules. These libraries provides filesystem and OS level abstractions and contains the necessary Java files and scripts required to start Hadoop.
+Hadoop YARN: This is a framework for job scheduling and cluster resource management.
+Hadoop Distributed File System (HDFS™): A DISTRIBUTED FILE SYSTEM that provides high-throughput access to application data.
+Hadoop MapReduce: This is YARN-based system for PARALLEL COMPUTING of large data sets.
+	Hadoop MapReduce is a software framework for easily writing applications which process big amounts of data in-parallel on large clusters (thousands of nodes) of commodity hardware in a reliable, fault-tolerant manner.
+	
+	The Map Task: 
+		This is the first task, which takes input data and converts it into a set of data, where individual elements are broken down into tuples (key/value pairs).
+	The Reduce Task: 
+		This task takes the output from a map task as input and combines those data tuples into a smaller set of tuples. The reduce task is always performed after the map task.
+
+HDFS 
+----
+http://courses.coreservlets.com/Course-Materials/pdf/hadoop/02-HDFS_1-Overview.pdf
+
+HDFS is good for
+
+
+	• Storing large files
+	– Terabytes, Petabytes, etc...
+	– Millions rather than billions of files
+	– 100MB or more per file
+	• Streaming data
+	– Write once and read-many times patterns  (VERY IMPORTANT)
+	– Optimized for streaming reads rather than random reads
+	– Append operation added to Hadoop 0.21
+	• “Cheap” Commodity Hardware
+	– No need for super-computers, use less reliable commodity hardware
+
+HDFS is not so good for...
+
+	• Low-latency reads
+		– High-throughput rather than low latency for small chunks of data
+		– HBase addresses this issue
+	• Large amount of small files
+		– Better for millions of large files instead of billions of small files
+			For example each file can be 100MB or more
+			More the small files, more the memory of NameNode will be used (VERY IMPORTANT)
+				- HDFS stores small files inefficiently, since each file is stored in a block, and block metadata is held in memory by the namenode. Thus, a large number of small files can eat up a lot of memory on the namenode. 
+				- Default block size in HDFS is 64 MB. In one block only one file data can be stored. So, if file size is only 40MB, then basically you are not using remaning 24MB. Another file will use other blocks.
+
+			Why the block is is so large?
+			To reduce seek time. Seek time is the time to search blocks for a particular file. If blocks are more then overall seek time is more.
+			The motivation is to minimize the cost of seeks as compared to transfer rate
+			– 'Time to transfer' > 'Time to seek'
+				• For example, lets say
+					– seek time = 10ms
+					– Transfer rate = 100 MB/s
+				• To achieve seek time of 1% transfer rate
+					– Block size will need to be = 100MB
+
+			Default block size is 64MB.	Many installations have block size of 128MB as well. (VERY IMPORTANT)
+		
+			(Complicated Question)
+			You are trying to copy a file on to HDFS but you are not able to do it. You know that the data nodes are almost full but still have enough free space to have your file. What would you do in that case?
+				Decrease the block size of the files you are copying.		
+		
+	• Multiple Writers
+	– Single writer per file
+	– Writes only at the end of file, no-support for arbitrary offset
+
+HDFS Daemons
+
+	Filesystem cluster is manager by three types ofprocesses
+	• Namenode   (It's a single point of failure in Hadoop 1.x. If Namenode is down, then Hadoop is down. So Namenode should be a very good hardware. In Hadoop 2.x, this issue is resolved by putting StandaloneNode that can act in place of NameNode if it is down.)
+		- manages the File System's namespace/meta-data/file blocks
+		- Runs on 1 machine to several machines
+		- It maintains 'Namespace Image(fsimage)' and 'Edit Logs'. Namespace Image has all metadata like block information, permissions, data node information etc. Edit Logs has all activities.  (VERY IMPORTANT)
+		- It is recommended to have 1GB main memory in NameNode for million storage blocks		
+		
+	• Datanode
+		- Stores and retrieves data blocks
+		- Reports to Namenode
+		- Runs on many machines
+		
+	• Secondary Namenode (Secondary Namenode is replaced by CheckpointNode and StandbyNameNode in hadoop2. Checkpoint node is same as Secondary NameNode. StandbyNameNode is just like NameNode. It can be used in case of Primary NameNode failure)   (VERY IMPORTANT)
+		- Performs house keeping work so Namenode doesn’t have to. 
+			Primary NameNode keeps edit logs in memory, so there has to somebody who keeps managing these logs and namespace image for faster recovery. 
+			If primary namenode fails. As it is a resource consuming process, another node Secondary NameNode is here in hadoop to do this job. That's it.
+		- Requires similar hardware as Namenode machine
+		- Not used for high-availability – NOT a BackUp for Namenode
+	
+	•  Backup Node
+		http://morrisjobke.de/2013/12/11/Hadoop-NameNode-and-siblings/
+		The Backup Node provides the same functionality as the Checkpoint Node, but is synchronized with the NameNode. 
+		It doesn’t need to fetch the changes periodically because it receives a strem of file system edits from the NameNode. 
+		It holds the current state in-memory and just need to save this to an image file to create a new checkpoint.
+		
+
+
+	The start of the checkpoint process on the secondary NameNode is controlled by two configuration parameters.
+		https://hadoop.apache.org/docs/r2.7.1/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html#Secondary_NameNode
+		- dfs.namenode.checkpoint.period, set to 1 hour by default, specifies the maximum delay between two consecutive checkpoints, and
+		- dfs.namenode.checkpoint.txns, set to 1 million by default, defines the number of uncheckpointed transactions on the NameNode which will force an urgent checkpoint, even if the checkpoint period has not been reached.
+	The secondary NameNode stores the latest checkpoint in a directory which is structured the same way as the primary NameNode’s directory. So that the check pointed image is always ready to be read by the primary NameNode if necessary.
+
+
+	What NameNode and is Secondary NameNode exactly are?
+	http://blog.madhukaraphatak.com/secondary-namenode---what-it-really-do/
+	Secondary Namenode is one of the poorly named component in Hadoop. By its name, it gives a sense that its a backup for the Namenode.But in reality its not. 
+
+	HDFS metadata
+		http://hortonworks.com/blog/hdfs-metadata-directories-explained/
+	
+		Persistence of HDFS metadata broadly breaks down into 2 categories of files:
+
+		fsimage – An fsimage file contains the complete state of the file system at a point in time. Every file system modification is assigned a unique, monotonically increasing transaction ID. An fsimage file represents the file system state after all modifications up to a specific transaction ID.
+		edits – An edits file is a log that lists each file system change (file creation, deletion or modification) that was made after the most recent fsimage.
+	
+		Checkpointing is the process of merging the content of the most recent fsimage with all edits applied after that fsimage is merged in order to create a new fsimage. 
+		Checkpointing is triggered automatically by configuration policies or manually by HDFS administration commands.
+	
+	NameNode and DataNode Storage Directory Structure
+		http://hortonworks.com/blog/hdfs-metadata-directories-explained/
+
+Block Replication
+	• Namenode determines replica placement
+	• Replica placements are rack aware
+		– Balance between reliability and performance
+	• Attempts to reduce bandwidth
+	• Attempts to improve reliability by putting replicas on multiple racks
+		– Default replication is 3 (VERY IMPORTANT)
+			• 1st replica on the local rack
+			• 2nd replica on the local rack but different machine
+			• 3rd replica on the different rack
+		– This policy may change/improve in the future
+		
+Client, Namenode, and Datanodes		
+
+	• Namenode does NOT directly write or read data
+		– One of the reasons for HDFS’s Scalability
+	• Client interacts with Namenode to update Namenode’s HDFS namespace and retrieve block locations for writing and reading
+	• Client interacts directly with Datanode to read/write data
+
+Namenode Memory Concerns
+	• For fast access Namenode keeps all block metadata in-memory
+		– The bigger the cluster, the more RAM required
+	• Best for millions of large files (100mb or more) rather than billions
+	• Will work well for clusters of 100s machines
+	• Changing block size will affect how much space a cluster can host
+		– 64MB to 128MB will reduce the number of blocks and significantly increase how much space the Namenode will be able to support
+		– Example:
+			• Let’s say we are storing 200 Terabytes = 209,715,200 MB
+			• With 64MB block size that equates to 3,276,800 blocks
+				– 209,715,200MB / 64MB = 3,276,800 blocks
+			• With 128MB block size it will be 1,638,400 blocks
+				– 209,715,200MB / 128MB = 1,638,400 blocks
+
+Namenode's fault-tolerance
+	• Namenode daemon process must be running at all times
+		– If process crashes then cluster is down
+	• Namenode is a single point of failure
+		– Host on a machine with reliable hardware (ex. sustain a diskfailure)
+		– Usually is not an issue
+	• Hadoop 2+
+		– High Availability Namenode
+			• Active Standby is always running and takes over in case main namenode fails
+			• Still in its infancy
+				– Learn more @ http://hadoop.apache.org/docs/r2.0.2-alpha/hadoop-yarn/hadoop-yarn-site/HDFSHighAvailability.html
+
+http://www.folkstalk.com/2013/11/hdfs-block-concepts-hadoop-tutorial.html
+
+Advantages of HDFS Block
+	
+	- The blocks are of fixed size, so it is very easy to calculate the number of blocks that can be stored on a disk.
+	- HDFS block concept simplifies the storage of the datanodes. The datanodes doesn’t need to concern about the blocks metadata data like file permissions etc. The namenode maintains the metadata of all the blocks.
+	- If the size of the file is less than the HDFS block size, then the file does not occupy the complete block storage.
+	- As the file is chunked into blocks, it is easy to store a file that is larger than the disk size as the data blocks are distributed and stored on multiple nodes in a hadoop cluster.
+	- Blocks are easy to replicate between the datanodes and thus provide fault tolerance and high availability. Hadoop framework replicates each block across multiple nodes (default replication factor is 3). In case of any node failure or block corruption, the same block can be read from another node.
+
+Why HDFS Blocks are Large in Size
+
+	The main reason for having the HDFS blocks in large size is to reduce the cost of seek time. 
+	For example, the seek time is 10ms and disk transfer rate is 100MB/s. 
+	To make the seek time 1% of the disk transfer rate, the block size should be 100MB. The default size HDFS block is 64MB. 
+
+http://stackoverflow.com/questions/22353122/why-is-a-block-in-hdfs-so-large
+	Seek time is nothing but time to locate a block of data. Total seek time will increase if number of blocks are more. so block size should be bigger (100 MB is preferable)
+	
+	
+HDFS Java API
+	http://www.coreservlets.com/hadoop-tutorial/#HDFS-3
+	Using Java API, you can put the files in HDFS.
+	
+	
+	
+
+JobTracker and TaskTracker (Hadoop 1.x) VS YARN (Hadoop 2.x)
+------------------------------------------------------------
+JobTracker can be installed on Namenode or some other node.
+Each DataNode has TaskTracker.
+
+Responsibilities of JobTracker and TaskTracker
+	http://bigdata.devcodenote.com/2012/11/hadoop-namenode-datanode-job-tracker.html
+	
+	JobTracker is a service used by NameNode. 
+	The primary function of the JobTracker is resource management (managing the task trackers), tracking resource availability and task life cycle management (tracking its progress, fault tolerance etc.)
+	It is too much for a single service to do this many things. So, in YARN cluster setup JobTracker's responsibility is divided into multiple services.
+
+	The TaskTracker has a simple function of following the orders of the job tracker and updating the job tracker with its progress status periodically.
+
+Durgasoft video - 
+	https://www.youtube.com/watch?v=O-yLgxaCAGc&index=2&list=PLsBV144uMkLNFuhaNLypb36ADk2WhKgwT
+Some other tutorial - 
+	http://searchdatamanagement.techtarget.com/definition/Apache-Hadoop-YARN-Yet-Another-Resource-Negotiator
+
+In Hadoop 1.x, MapReduce program used to contain Resource Management and Scheduling capabilities also.
+They got separated as Yarn in Hadoop 2.x.
+
+If Namenode is down, then it's a single point of failure in Hadoop 1.x. To overcome this, YARN came to picture in Hadoop 2.x
+In YARN,
+	In place of JobTracker, there is Resource Manager, Application Master and Timeline Server in Yarn. They are associated with NameNode just like JobTracker.
+	In place of TaskTracker, there is  Node Manager on each DataNode.
+	In place of SecondaryNameNode, there is a StandaloneNode that can act in place of NameNode if it is down. So, No single point of failure.
+
+YARN is just a change in cluster setup. There is no change in Hadoop Ecosystem Tools and APIs.
+Job processing is very fast in Hadoop 2.x because 
+
+What is Job Scheduling?
+https://www.youtube.com/watch?v=mIUd3pyD6Qc
+
+Hadoop Commands
+---------------
+https://hadoop.apache.org/docs/r2.7.1/hadoop-project-dist/hadoop-common/CommandsManual.html
+http://www.tutorialspoint.com/hadoop/hadoop_command_reference.htm
+
+
+There are different commands for different purposes
+bin/hadoop dfs with no additional arguments will list all the commands that can be run with the FsShell system. 
+
+HDFS FileSystem (fs) Commands- 
+	https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/FileSystemShell.html
+
+	The File System (FS) shell includes various shell-like commands that directly interact with the Hadoop Distributed File System (HDFS) as well as other file systems that Hadoop supports, 
+	such as Local FS, HFTP FS, S3 FS, and others. The FS shell is invoked by:
+		bin/hadoop fs <args>
+
+
+	All FS shell commands take path URIs as arguments. 
+	If not specified, the default scheme specified in the configuration (core-site.xml's fs.default.name) is used.
+	e.g.
+		appendToFile syntax - 
+			hadoop fs -appendToFile <<local filepath>> <<hdfs fildepath>>
+		
+			hadoop fs -appendToFile localfile /user/hadoop/hadoopfile   (it takes default prefix of URI as hdfs://localhost:9000)
+			is same as
+			hadoop fs -appendToFile localfile hdfs://localhost:9000/user/hadoop/hadoopfile
+			or
+			hadoop fs -appendToFile localfile file:///user/hadoop/hadoopfile
+	
+
+	appendToFile is a command to append local file content to hdfs file
+
+	bin/hadoop fs -help commandName will display a short usage summary for the operation in question, if you are stuck.
+
+
+	To perform any command line operations on HDFS
+		bin/hadoop fs <<command>>  ---- e.g. bin/hadoop fs -ls 		to list all files
+	
+		bin/hadoop fs -ls file:///   --- this will list all files and dirs in root dir '/'
+	
+		bin/hadoop fs -ls file:///home/
+
+Special Commands:
+	There are some special commands like hadoop archive for creating .har to merge many small files into one to reduce NameSpace memory usage.
+	Remember smaller the files, more blocks are used so more memory is used in namenode. If you can merge all small files into one, it would use less number
+	of blocks, so less memory will be required by NameNode.
+
+	There is a command 'distcp' to copy files from one hadoop system to another.
+	It will read files from one namenode and give it to another namenode.
+
+HIVE, PIG and HBASE (Hadoop ecosystem's Data Access components)
+---------------------------------------------------------------
+They are Data Access components of Hadoop Ecosystem. You can use either one to store in and/or map-reduce data from HDFS.
+Hive and Pig are schema oriented. HBase is key-value NoSql DB.
+All these 3 can be integrated with Hadoop easily.
+
+		HIVE
+		----
+		https://www.youtube.com/watch?v=9hg73PCuTDc
+
+		https://cwiki.apache.org/confluence/display/Hive/GettingStarted
+
+		It is built on top of MapReduce only.
+		Hive has its own cluster setup having MetaStore and Warehouse. Warehouse contains actual data loaded from your local or HDFS.
+		So, you can load data (file data) from you local or HDFS.
+		Hive follows strict schema just like RDBMS table.
+
+		Normally, to do MapReduce, you need to write code using Java.
+		If you don't want to write code and want to insert or read files from hdfs in the form of sql then you can use HIVE.
+
+		How Hive interacts with Hadoop?
+			http://www.bodhtree.com/blog/2012/09/08/what-is-hive-it%E2%80%99s-interaction-with-hadoop-and-big-data/
+			It provides a simple query language called Hive QL, which is based on SQL and which enables users familiar with SQL to easily perform ad-hoc querying, summarization and data analysis.
+
+		Hive provides external interfaces like command line (CLI) and web UI, and application programming interfaces (API) like JDBC and ODBC
+
+		http://stackoverflow.com/questions/10249020/does-hive-run-hadoop-when-a-query-is-executed
+			Hive operates on files that are stored on HDFS. For anything other than the simplest queries, hive generates and runs mapreduce jobs. For very simple queries (SELECT * FROM MyTable) it will just stream the files off of disk.	
+
+		How does Hive store tables and is that format accessible to Pig?
+			https://www.quora.com/How-does-Hive-store-tables-and-is-that-format-accessible-to-Pig
+			Meta data about (Hive) tables is stored in HCatalog, which itself stores the data in a RDBMS like MySQL. Pig (and other tools) can access these table definitions too. The data itself can be stored in HDFS or S3 for example. 
+			Note that Hive does a best effort schema on read, i.e. when a query is execute the data is read from the storage location and deserialised based on the meta data. That gives you the flexibility to add or remove data directly on the file system without Hive which is useful when you land data from external systems.
+			Hive also has two types of table definition - the 'normal' one which means that dropping a table removes the meta data and the data on the filesystem and an 'external' table definition which means Hive only manages the meta data and dropping the table leaves the data on the filesystem untouched.	
+
+			https://www.quora.com/How-does-Hive-store-tables-in-HDFS-Is-that-format-accessible-to-Pig
+			The data is loaded into HDFS and stored in files within directories. You can specify hdfs dir where data should be stored in hive/pig queries.
+
+		https://www.dezyre.com/article/difference-between-pig-and-hive-the-two-key-components-of-hadoop-ecosystem/79
+
+			We can consider Hive as a Data Warehousing package that is constructed on top of Hadoop for analyzing huge amounts of data. 
+			Hive is mainly developed for users who are comfortable in using SQL. 
+			The best thing about Hive is that it conceptualizes the complexity of Hadoop because the users need not write MapReduce programs when using Hive so anyone who is not familiar with  Java Programming and Hadoop API’s can also make the best use of Hive.
+	
+			We can summarize Hive as:
+
+			a) A Data Warehouse Infrastructure
+			b) Definer of a Query Language popularly known as HiveQL (similar to SQL)
+			c) Provides us with various tools for easy extraction, transformation and loading of data.
+			d) Hive allows its users to embed customized mappers and reducers.
+
+			What makes Hive Hadoop popular?
+
+			Hive Hadoop provides the users with strong and powerful statistics functions.
+			Hive Hadoop is like SQL, so for any SQL developer the learning curve for Hive will almost be negligible.
+			Hive Hadoop can be integrated with HBase for querying the data in HBase whereas this is not possible with Pig. In case of Pig, a function named HbaseStorage () will be used for loading the data from HBase.
+			Hive Hadoop has gained popularity as it is supported by Hue.
+			Hive Hadoop has various user groups such as CNET, Last.fm, Facebook, and Digg and so on.
+	
+		PIG
+		---
+		https://www.youtube.com/watch?v=rbWQokft0BU
+
+		It is a Pig Latin scripting. It is given by Yahoo.
+		Pig is also built on top of MapReduce.	
+		It is a Data Flow language.
+
+		Unlike to Hive, Pig does not have MetaStore and Warehouse.
+		There is a concept of Bag(table), tuple(record), atom (field).
+		Just like Hive, you can store or read data from local or HDFS.
+		Pig uses Grunt shell to run the commands
+
+
+		What makes Pig Hadoop popular?
+			https://www.dezyre.com/article/difference-between-pig-and-hive-the-two-key-components-of-hadoop-ecosystem/79
+
+			Pig Hadoop follows a multi query approach thus it cuts down on the number times the data is scanned.
+			Pig Hadoop is very easy to learn read and write if you are familiar with SQL.
+			Pig provides the users with a wide range of nested data types such as Maps, Tuples and Bags that are not present in MapReduce along with some major data operations such as Ordering, Filters, and Joins.
+			Performance of Pig is on par with the performance of raw Map Reduce.
+			Pig has various user groups for instance 90% of Yahoo’s MapReduce is done by Pig, 80% of Twitter’s MapReduce is also done by Pig and various other companies such as Sales force, LinkedIn, AOL and Nokia also employ Pig.
+
+		Difference Between Hive and Pig
+		-------------------------------
+		https://www.dezyre.com/article/difference-between-pig-and-hive-the-two-key-components-of-hadoop-ecosystem/79
+
+		HCatalog
+		--------
+		https://www.quora.com/How-does-Hive-store-tables-and-is-that-format-accessible-to-Pig
+
+		It's a bridge between Hive and Pig.
+		Schema created via Hive/Pig is stored in HCatalog that stores in int MySql DB.
+		So, now schema created by Hive/Pig can be used by each other.
+
+		How does Hive store tables in HDFS? Is that format accessible to Pig?
+
+		https://www.quora.com/How-does-Hive-store-tables-in-HDFS-Is-that-format-accessible-to-Pig
+
+		Hive and Pig work on the principle of schema on read. 
+		The data is loaded into HDFS and stored in files within directories. 
+		The schema is applied during Hive queries and Pig data flow executions. 
+		The schema or metadata is read from the metastore via the HCatalog API. 
+		HCatalog, Pig and Hive have matured to a point where they work well together. 
+		Tables created or updated by one can be used by another language.
+
+
+		HBASE
+		-----
+
+		When to use HBASE or any other NoSql DB on top of Hadoop?
+		----------------------------------------------------------
+		Hadoop is good for STORING and PROCESSING large amount of FILE. Huge size of file can be stored only if they can be splitted into multiple blocks.
+		Splitting the big file into blocks is a sequential process. It means hadoop reads some data from file and puts it in one block, then reads another set of data and puts into another block and so on.
+		If file is splitted into small small sized blocks, at read time seek time is high to find all blocks.
+		So, block size is kept high 64MB (by default) in hdfs.
+		Data in each block is access sequentially and fed to Mappers. This is called sequential processing.
+
+		When you want the result by accessing entire dataset, use MapReduce on HDFS cluster direclty. e.g. doing analytics like aggregations on all data of file.
+		When you want few rows from large amount of rows, then use DB like HBase. 
+
+		Basically, HDFS becomes Batch Layer and HBase becomes Service Layer in Lambda Architecure.
+
+
+		Oozie
+		-----
+
+
+		Sqoop
+		-----
+
+
+		Spark
+		-----	
+		part 1 - https://www.youtube.com/watch?v=JP7bSi84Fps
+		part 2 - https://www.youtube.com/watch?v=rx_pzqmVBD4	

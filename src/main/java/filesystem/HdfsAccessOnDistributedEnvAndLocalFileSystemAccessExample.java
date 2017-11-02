@@ -63,6 +63,18 @@ Anatomy of a File Read (pg 69 of Book).
     - It will also call the namenode to retrieve the datanode locations for the next batch of blocks as needed.
     - When the client has finished reading, it calls close() on the FSDataInputStream.
 
+    (IMP)
+    While reading a file,
+    DFSInputStream, which has stored the datanode addresses for the first few blocks in the file, then connects to the first (CLOSEST) datanode for the first block in the file.
+    When the end of the block is reached, DFSInputStream will close the connection to the datanode, then find the best datanode for the next block
+
+    How does it determine the Closest DataNode? (pg 71)
+        If block of the file is on the node where the process runs, then that's the closest one
+        If not, then it will try a node on the same rack.
+        If not, then it will try a node in different data center.
+
+
+
 Anatomy of File Write (pg 72 of Book).
 
     you can see the book for diagram flow.
@@ -73,13 +85,13 @@ Anatomy of File Write (pg 72 of Book).
     - It writes a block to that DataNode.
     - That DataNode forwards that block through Ack Queue to another DataNode for replication. If replication fails, data is put back into the Ack Queue and retried.
 
-How DataNodes are chosen for replication?
+    How the blocks are replicated in the cluster? (pg 74 of Book)
+        One copy is kept on the same node where the original block is stored.
+        Second copy is kept on a node of different Rack.
+        Third copy is kept on another node of that Rack.
 
-    See diagram on pg 74 of Book.
 
-    Hadoop’s default strategy is to place the first replica on the same node.
-    The second replica is placed on a different rack from the first (off-rack), chosen at random.
-    The third replica is placed on the same rack as the second, but on a different node chosen at random.
+
 
 */
 public class HdfsAccessOnDistributedEnvAndLocalFileSystemAccessExample {
