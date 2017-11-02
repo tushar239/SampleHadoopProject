@@ -432,7 +432,7 @@ MapReduce
 
      Somehow, I could not make hadoop work properly in my local mac. So, I used 'Cloudera Hadoop VM' on 'VMWare Fusion for Mac'.
      Cloudera Hadoop VM has all installed and configured for Hadoop and and its Ecosystem libraries and tools.
-     You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Cloudera Hadoop on VMWare'
+     You can read 'Running WordCount job on Cloudera VM.txt'
 
      When you run the job, you see some important information about the job.
 
