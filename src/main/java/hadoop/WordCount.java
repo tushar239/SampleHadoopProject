@@ -32,7 +32,7 @@ Hadoop File System  (pg 53)
     - HAR
     - View
     - FTP
-    - S3   ---- AWS EMR allows you to use S3
+    - S3   ---- AWS EMR allows you to use S3 instead of HDFS.
     - Azure
     - Swift
 
@@ -44,10 +44,18 @@ Hadoop File System  (pg 53)
     Hadoop’s org.apache.hadoop.fs.FileSystem is generic class to access and manage HDFS files/directories located in distributed environment. File’s content stored inside datanode with multiple equal large sizes of blocks (e.g. 128 MB), and namenode keep the information of those blocks and Meta information. FileSystem read and stream by accessing blocks in sequence order. FileSystem first get blocks information from NameNode then open, read and close one by one. It opens first blocks once it complete then close and open next block. HDFS replicate the block to give higher reliability and scalability and if client is one of the datanode then it tries to access block locally if fail then move to other cluster datanode.
     FileSystem uses FSDataOutputStream and FSDataInputStream to write and read the contents in stream. Hadoop has provided various implementation of FileSystem as described below:
 
-    1) DistributedFileSystem: To access HDFS File in distributed environment
-    2) LocalFileSystem: To access HDFS file in Local system
-    3) FTPFileSystem: To access HDFS file FTP client
-    4) WebHdfsFileSystem: To access HDFS file over the web
+    1) DistributedFileSystem: To read/write a file in HDFS (Hadoop Distributed File System)
+    2) LocalFileSystem: To read/write a file in Local File System
+    3) FTPFileSystem: To read/write a file using FTP client
+    4) S3FileSystem: To read/write a file in S3
+    5) WebHdfsFileSystem: To read/write a file over the web
+    and a few more
+
+    'hadoop fs' command is used to read/write file from these file systems.
+    'hadoop fs -put <local file system location> <hdfs://localhost:9000/.....> This says that you want to put a file from node's local file system to HDFS.
+    'hadoop ps -get <hdfs://localhost:9000/.....> <local file system location>  This says that you want to copy a file from HDFS to node's local file syst\m.
+    if you use file:// scheme instead of hdfs://, it will use local file system
+    if you use s3:// scheme instead of hdfs://, it will use s3 file system
 
     You can see above url to see how to write Java code to access HDFS in different File Systems.
     Similar information is there in a book on pg 56
@@ -174,10 +182,13 @@ HDFS (Hadoop Distributed File System)
         To access HDFS, you need to use hdfs scheme
 
             hadoop fs -ls hdfs://namenodehost/<default dir is /user/<username> >
+
             default hdfs directory that will be accessed will be /user/<username with which OS is booted>, but you can provide any dir name
             namenode host will be localhost, if you are connecting to namenode machine to run this command.
             it will be namenode's ip address, if you are connecting from outside hadoop cluster.
             this host name will converted to HDFS's url by looking into core-site.xml's fs.defaultFS configuration.
+
+            If you have a client node in the cluster, I think you can connect to client node instead of namenode directly.
 
             If you are in the node of a hadoop cluster,
                 You can also use
@@ -225,17 +236,21 @@ HDFS (Hadoop Distributed File System)
 
             hadoop fs -copyFromLocal input/docs/input.txt hdfs://localhost:9000/user/tom/input.txt
             is same as
-            hadoop fs -appendToFile input/docs/input.txt /user/tom/input.txt
+            hadoop fs -appendToFile input/docs/input.txt /user/tom/input.txt   ----- hdfs://localhost:9000 is appended implicitly.
 
             hadoop fs -put <from location from your local machine> <to location in hdfs> ----- this will ask namenode to put a file into data nodes. namenode will chunk this file into blocks and then put it into datanodes.
+
+
             hadoop fs -copyFromLocal ...    ---- same as -put command
             hadoop fs -moveFromLocal ...    ---- cut and past
             If source is a file then destination can be a file or directory
             If source is a directory then destination has to be a directory
 
             hadoop fs -get <hdfs location of file>  <local filesystem location>
-            hdfs dfs -get /user/hadoop/file localfile  ---- copies a file from hdfs to local filesystem
-            hdfs dfs -get hdfs://namenodehost:port/user/hadoop/file localfile
+            or
+            hdfs dfs -get /user/cloudera/file <local filesystem location>  ---- copies a file from hdfs to local filesystem. hdfs://localhost:9000 is prefixed implicitly to /user/cloudera/file
+            or
+            hdfs dfs -get hdfs://namenodehost:port/user/cloudera/file <local filesystem location>
 
             hadoop fs -copyToLocal ...
             hadoop fs -moveToLocal ...
@@ -384,7 +399,7 @@ MapReduce
 
      Somehow, I could not make hadoop work properly in my local mac. So, I used 'Cloudera Hadoop VM' on 'VMWare Fusion for Mac'.
      Cloudera Hadoop VM has all installed and configured for Hadoop and and its Ecosystem libraries and tools.
-     You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Clouder Hadoop on VMWare'
+     You can read 'Running WordCount job on Cloudera VM.txt' under '/Books/HadoopEcosystem/hadoop distributions/Cloudera Hadoop on VMWare'
 
      When you run the job, you see some important information about the job.
 
