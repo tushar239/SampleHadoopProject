@@ -338,6 +338,35 @@ HDFS (Hadoop Distributed File System)
             In this case, you can use the balancer tool to subsequently even out the block distribution across the cluster.
 MapReduce
 
+
+   Data Locality in Hadoop
+
+        https://data-flair.training/blogs/data-locality-in-hadoop-mapreduce/
+
+        In Hadoop, datasets are stored in HDFS. Datasets are divided into blocks and stored across the datanodes in Hadoop cluster. When a user runs the MapReduce job then NameNode sent this MapReduce code to the datanodes on which data is available related to MapReduce job.
+
+        Categories of Data locality in Hadoop
+        - Data local data locality in Hadoop
+          When the data is located on the same node as the mapper working on the data it is known as data local data locality. In this case, the proximity of data is very near to computation. This is the most preferred scenario.
+        - Intra-Rack data locality in Hadoop
+          It is not always possible to execute the mapper on the same datanode due to resource constraints. In such case, it is preferred to run the mapper on the different node but on the same rack.
+        - Inter-Rack data locality in Hadoop
+          Sometimes it is not possible to execute mapper on a different node in the same rack due to resource constraints. In such case, we will execute the mapper on the nodes on different racks. This is the least preferred scenario.
+
+        How to optimize data locality?
+            Although Data locality is the main advantage of Hadoop MapReduce as map code is executed on the same datanode where data resides.
+            But this is not always true in practice due to various reasons like speculative execution in Hadoop, Heterogeneous cluster, Data distribution and placement, and Data Layout and Input Splitter.
+
+            Challenges become more prevalent in large clusters, because more the number of data nodes and data, less will be the locality.
+            In larger clusters, some nodes are newer and faster than the other, creating the data to compute ratio out of balance thus, large clusters tend not be completely homogeneous.
+            In speculative execution even though the data might not be local, but it uses the computing power.
+            The root cause also lies in the data layout/placement and the used Input Splitter.
+            Non-local data processing puts a strain on the network which creates problem to scalability.
+            Thus the network becomes the bottleneck.
+
+            We can improve data locality by first detecting which jobs has the data locality problem or degrade over time.
+            Problem-solving is more complex and involves changing the data placement and data layout, using a different scheduler or by simply changing the number of mapper and reducer slots for a job.
+
     YARN (Yet Another Resource Negotiator) (pg 79)
 
         Read "Hadoop v1 vs Hadoop v2.docx"
@@ -496,6 +525,17 @@ MapReduce
             The only difference is that Combiner is on the same node where Mapper is.
             By doing reduction of Mapper’s output using Combiner reduces total output to be transferred through network to a Reducer. This is a key advantage of Combiner.
 
+
+
+    Input split number vs blocks number
+
+      https://stackoverflow.com/questions/30549261/split-size-vs-block-size-in-hadoop
+      If you have 200 MB file and and default block size is 128MB.
+      Two blocks will be created on different data nodes provided you have 2 or more data nodes.
+
+      Input split is size of data to be assigned to one mapper. So, block is a physical split of data and input split is a logical split of data.
+      Default input split size is same block size. So, if you don't specify number of mappers, hadoop will number of mappers same as number of blocks.
+      If input split size=90 MB, then hadoop will create 3 mappers. In this case, there is a possibility that mapper is running on some node that needs to read block data from another node. This increases network latency. So, the best thing is to keep input split size same as block size.
 
 */
 
