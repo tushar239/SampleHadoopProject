@@ -79,7 +79,7 @@ To set up a cluster in "Pseudo-Distributed mode", you need to do following confi
 conf/core-site.xml
 
 	<property>
-		<name>fs.default.name</name>
+		<name>fs.default.name</name> ----- this is outdated. use fs.defaultFS
 		<value>hdfs://localhost:9000</value> <!-- This is a URI using which HDFS files can be located-->
 	</property>
 	<property>
