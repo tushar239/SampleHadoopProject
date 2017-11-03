@@ -531,7 +531,7 @@ public class WordCount {
 
         // Create job
         Job job = new Job(conf, "WordCount");
-        job.setJarByClass(WordCountMapper.class);
+        job.setJarByClass(WordCountMapper.class); // Hadoop will find the job JAR automatically by searching for the JAR on the driver’s classpath that contains the class set in the setJarByClass() method (on JobConf or Job). Alternatively, if you want to set an explicit JAR file by its file path, you can use the setJar() method. (The JAR file path may be local or an HDFS file path.)
 
         // Setup MapReduce
         job.setMapperClass(WordCountMapper.class);
