@@ -583,7 +583,7 @@ public class WordCount {
         job.setMapperClass(WordCountMapper.class);
         job.setReducerClass(WordCountReducer.class);
         //job.setCombinerClass(WordCountReducer.class);
-        job.setNumReduceTasks(1);
+        job.setNumReduceTasks(1); // by default, number of mappers is same as number of blocks in hdfs for a file.
 
         // Specify key / value
         job.setOutputKeyClass(Text.class);
