@@ -498,6 +498,12 @@ MapReduce
 
 
 */
+
+/*
+For more detailed information about how to write MapReduce code, see Book's Chapter 6 (Developing a MapReduce Application)
+It explains how can you switch easily between Standalone, Pseudo Distribution and Cluster modes.
+It also explains how can you log and debug the malformed data by setting Job's status and Counter parameter and seeing them in Resource Manager's UI.
+ */
 public class WordCount {
 
     /*@Override

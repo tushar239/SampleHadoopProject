@@ -8,6 +8,13 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
 import java.util.StringTokenizer;
 
+/**
+ * How to log and debug the errors or malformed input data?
+ * you can set job's status and also create a counter for malformed data.
+ * You can easily see this information using Resource Manager's UI.
+ * See pg 168 of the book.
+ */
+
 public class WordCountMapper
         extends Mapper<LongWritable, Text, // data types of input key-value
                 Text, IntWritable> { // data types of output key-value
