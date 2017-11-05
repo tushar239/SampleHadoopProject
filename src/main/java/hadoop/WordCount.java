@@ -369,7 +369,7 @@ MapReduce
 
     YARN (Yet Another Resource Negotiator) (pg 79)
 
-        Read "Hadoop v1 vs Hadoop v2.docx"
+        Read "YARN (MapReduce2).docx"
 
     MapReduce has two important programs - Job Tracker and Task tracker.
     Job Tracker is on master node (can be different than HDFS' NameNode).

@@ -42,6 +42,18 @@ public class HashPartitioner<K, V> extends Partitioner<K, V> {
 
 The default partitioner is HashPartitioner, which hashes a record’s key to determine which partition the record belongs in.
 Each partition is processed by a reduce task, so the number of partitions is equal to the number of reduce tasks for the job.
+
+
+Very Important:
+There are 3 main components involved to feed key-value pair to mapper.
+- InputSplit
+- InputFormat
+- RecordReader
+- Context that holds RecordReader
+
+Read in detail from "YARN (MapReduce2).docx".
+It is very important to understand difference between HDFS block and InputSplit.
+Also understand Mapper's run() method. For more granular control over your Mapper class, you can override run() method.
  */
 
 public class WordCountMapper
