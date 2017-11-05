@@ -583,7 +583,13 @@ public class WordCount {
         job.setMapperClass(WordCountMapper.class);
         job.setReducerClass(WordCountReducer.class);
         //job.setCombinerClass(WordCountReducer.class);
+
+        // pg 217 of the book
+        // One rule of thumb is to aim for reducers that each run for five minutes or so, and which produce at least one HDFS block’s worth of output.
         job.setNumReduceTasks(1); // by default, number of mappers is same as number of blocks in hdfs for a file.
+        // You may have noticed that we didn’t set the number of map tasks.
+        // The reason for this is that the number is equal to the number of splits that the input is turned into, which is driven by the size of the input and the file’s block size (if the file is in HDFS)
+        // If you want, you can set a different number.
 
         // Specify key / value
         job.setOutputKeyClass(Text.class);
@@ -593,6 +599,9 @@ public class WordCount {
         FileInputFormat.addInputPath(job, inputPath);
         //FileInputFormat.setInputPaths(job, new Path(args[0])); // for AWS EMR
         job.setInputFormatClass(TextInputFormat.class);
+
+        // Partitioner
+        //job.setPartitionerClass(HashPartitioner.class); // HashPartitioner is a default Partitioner
 
         // Output
         FileOutputFormat.setOutputPath(job, outputDir);

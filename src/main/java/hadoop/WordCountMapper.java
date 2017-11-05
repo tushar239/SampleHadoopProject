@@ -15,6 +15,35 @@ import java.util.StringTokenizer;
  * See pg 168 of the book.
  */
 
+/*
+
+Mapper syntax
+
+public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
+
+   protected void map(KEYIN key, VALUEIN value, Context context) throws IOException, InterruptedException {
+
+     context.write((KEYOUT) key, (VALUEOUT) value);
+
+   }
+}
+
+HashPartitioner syntax
+
+public class HashPartitioner<K, V> extends Partitioner<K, V> {
+
+    public int getPartition(K key, V value, int numReduceTasks) {
+
+        return (key.hashCode() & Integer.MAX_VALUE) % numReduceTasks;
+
+    }
+
+}
+
+The default partitioner is HashPartitioner, which hashes a record’s key to determine which partition the record belongs in.
+Each partition is processed by a reduce task, so the number of partitions is equal to the number of reduce tasks for the job.
+ */
+
 public class WordCountMapper
         extends Mapper<LongWritable, Text, // data types of input key-value
                 Text, IntWritable> { // data types of output key-value
