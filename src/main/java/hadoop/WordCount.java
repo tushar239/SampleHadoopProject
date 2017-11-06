@@ -601,6 +601,7 @@ public class WordCount {
         // InputFormat has information about RecordReader. RecordReader is responsible to convert InputSplit into key-value pair that can be fed to mapper class.
         // FileInputFormat is the base class for all implementations of InputFormat that use files as their data source.
         // TextInputFormat is one of the concrete class of FileInputFormat.
+        // You can customize InputFormat class, if you want. Many of the parameters used by InputFormat are configurable, so in most cases, you don't have to customize InputFormat, but there can be a case like mentioned in 'How to force Not to create more than 1 split?'
         job.setInputFormatClass(TextInputFormat.class);
 
         /*
