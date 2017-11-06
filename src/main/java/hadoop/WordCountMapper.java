@@ -49,6 +49,7 @@ There are 3 main components involved to feed key-value pair to mapper.
 - InputSplit
 - InputFormat
 - RecordReader
+and
 - Context that holds RecordReader
 
 Read in detail from "YARN (MapReduce2).docx".

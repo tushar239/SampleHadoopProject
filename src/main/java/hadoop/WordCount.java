@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 
 
 /*
@@ -80,6 +81,8 @@ HDFS (Hadoop Distributed File System)
     HDFS blocks are large compared to disk blocks, and the reason is to minimize the cost of seeks. If the block is large enough, the time it takes to transfer the data from the disk can be significantly longer than the time to seek to the start of the block. Thus, trans‐ ferring a large file made of multiple blocks operates at the disk transfer rate.
     A quick calculation shows that if the seek time is around 10 ms and the transfer rate is 100 MB/s, to make the seek time 1% of the transfer time, we need to make the block size around 100 MB. The default is actually 128 MB, although many HDFS installations use larger block sizes. This figure will continue to be revised upward as transfer speeds grow with new generations of disk drives.
     This argument shouldn’t be taken too far, however. Map tasks in MapReduce normally operate on one block at a time, so if you have too few tasks (fewer than nodes in the cluster), your jobs will run slower than they could otherwise.
+
+    (IMP) Hadoop works better with a small number of large files than a large number of small files.
 
     Like its disk filesystem cousin, HDFS’s fsck command understands blocks. For example, running:
         % hdfs fsck / -files -blocks
@@ -595,10 +598,48 @@ public class WordCount {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
 
-        // Input
+        // InputFormat has information about RecordReader. RecordReader is responsible to convert InputSplit into key-value pair that can be fed to mapper class.
+        // FileInputFormat is the base class for all implementations of InputFormat that use files as their data source.
+        // TextInputFormat is one of the concrete class of FileInputFormat.
+        job.setInputFormatClass(TextInputFormat.class);
+
+        /*
+        InputFormat
+
+             A path may represent a file, a directory, or, by using a glob, a collection of files and directories. A path representing a directory includes all the files in the directory as input to the job.
+             To exclude certain files from the input, you can set a filter using the setInputPathFilter() method on FileInputFormat.
+             Even if you don’t set a filter, FileInputFormat uses a default filter that excludes hidden files (those whose names begin with a dot or an underscore). If you set a filter by calling setInputPathFilter(), it acts in addition to the default filter. In other words, only nonhidden files that are accepted by your filter get through.
+             Paths and filters can be set through configuration properties, too
+             mapreduce.input.fileinputformat.inputdir, mapreduce.input.pathFilter.class
+
+        FileInputFormat vs CombineFileInputFormat
+
+             Where FileInputFormat creates a split per file, CombineFileInputFormat packs many files into each split so that each mapper has more to process.
+             Crucially, CombineFileInputFormat takes node and rack locality into account when deciding which blocks to place in the same split, so it does not compromise the speed at which it can process the input in a typical MapReduce job.
+             Of course, if possible, it is still a good idea to avoid the many small files case, because MapReduce works best when it can operate at the transfer rate of the disks in the cluster, and processing many small files increases the number of seeks that are needed to run a job. Also, storing large numbers of small files in HDFS is wasteful of the namenode’s memory.
+
+        How to force Not to create more than 1 split?
+
+            Some applications don’t want files to be split, as this allows a single mapper to process each input file in its entirety. For example, a simple way to check if all the records in a file are sorted is to go through the records in order, checking whether each record is not less than the preceding one. Implemented as a map task, this algorithm will work only if one map processes the whole file.2
+            There are a couple of ways to ensure that an existing file is not split. The first (quick- and-dirty) way is to increase the minimum split size to be larger than the largest file in your system. Setting it to its maximum value, Long.MAX_VALUE, has this effect. The second is to subclass the concrete subclass of FileInputFormat that you want to use, to override the isSplitable() method3 to return false. For example, here’s a nonsplit‐ table TextInputFormat:
+
+            import org.apache.hadoop.fs.Path;
+            import org.apache.hadoop.mapreduce.JobContext;
+            import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+            public class NonSplittableTextInputFormat extends TextInputFormat {
+                @Override
+                protected boolean isSplitable(JobContext context, Path file) {
+                    return false;
+                }
+            }
+
+            This should be avoided. There is no point of using Hadoop, if you are not going to have multiple mappers.
+            You are not taking advantage of Hadoop’s parallel processing.
+
+       */
+
         FileInputFormat.addInputPath(job, inputPath);
         //FileInputFormat.setInputPaths(job, new Path(args[0])); // for AWS EMR
-        job.setInputFormatClass(TextInputFormat.class);
 
         // Partitioner
         //job.setPartitionerClass(HashPartitioner.class); // HashPartitioner is a default Partitioner
