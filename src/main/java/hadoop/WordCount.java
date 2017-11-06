@@ -605,11 +605,37 @@ public class WordCount {
         job.setInputFormatClass(TextInputFormat.class);
 
         /*
-        InputFormat
+
+        What is InputSplit?
+            HDFS blocks are of size 128MB by default. It is possible that last record in a block is finishing in some other block.
+            In this case, InputSplit will contain 2 blocks location information and size of a split will be little more than 128MB.
+
+            Remember, blocks and splits are created for a file. If there are multiple input files, each file will be in different blocks and each file have different splits.
+            You give a file path to InputFormat and InputFormat will decide how many splits need to be created based on your configuration that gives value of min split size and max split size. You can also override isSplitable() method to say that you don't want to split a file.
+
+
+        What is RecordReader?
+
+           RecordReader creates key-value pair from InputSplit and gives it to Mapper. Mapper accesses RecordReader using Context.
+
+        InputFormat as FileInputFormat
+
+            InputFormat is responsible to create InputSplit and RecordReader.
+
+            You provide path(s) of file(s)/directory from which splits needs to be created based on split size related configuration parameter.
+
+            FileInputFormat is responsible to create InputSplits.
+
+            Who asks FileInputFormat to create InputSplits?
+                JobSubmitter class
+            Who calls JobSubmitter?
+                Client
+                So, Client actually creates InputSplits with the help of FileInputFormat and that information is stored in HDFS. Later on, Application Master will use this information to know how many tasks needs to be created.
 
              A path may represent a file, a directory, or, by using a glob, a collection of files and directories. A path representing a directory includes all the files in the directory as input to the job.
              To exclude certain files from the input, you can set a filter using the setInputPathFilter() method on FileInputFormat.
              Even if you don’t set a filter, FileInputFormat uses a default filter that excludes hidden files (those whose names begin with a dot or an underscore). If you set a filter by calling setInputPathFilter(), it acts in addition to the default filter. In other words, only nonhidden files that are accepted by your filter get through.
+
              Paths and filters can be set through configuration properties, too
              mapreduce.input.fileinputformat.inputdir, mapreduce.input.pathFilter.class
 

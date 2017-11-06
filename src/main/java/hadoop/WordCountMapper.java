@@ -3,6 +3,8 @@ package hadoop;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.SplitLocationInfo;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
@@ -69,6 +71,23 @@ public class WordCountMapper
     public void map(LongWritable key, Text value, // data types of input key-value
                     Context context)
             throws IOException, InterruptedException {
+
+        // You can get InputSplit information in this way
+
+        /*InputSplit inputSplit = context.getInputSplit();
+        long inputSplitLength = inputSplit.getLength();
+        SplitLocationInfo[] locationInfo = inputSplit.getLocationInfo();
+        for (SplitLocationInfo splitLocationInfo : locationInfo) {
+            System.out.println(splitLocationInfo.isInMemory());
+            System.out.println(splitLocationInfo.isOnDisk());
+            System.out.println(splitLocationInfo.getLocation());
+        }*/
+
+        /*
+        LongWritable currentKey = context.getCurrentKey(); // same as key provided by RecordReader
+        Text currentValue = context.getCurrentValue(); // same as value provided by RecordReader
+        */
+
         String line = value.toString();
         StringTokenizer itr = new StringTokenizer(line, ",");
 
