@@ -8,11 +8,10 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.LazyOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.IOException;
-import java.nio.file.Paths;
-
 
 /*
 
@@ -504,6 +503,9 @@ MapReduce
             Output of Mapper is stored on local disk. Why is this?
             Map output is intermediate output: it’s processed by reduce tasks to produce the final output, and once the job is complete, the map output can be thrown away. So, storing it in HDFS with replication would be overkill. If the node running the map task fails before the map output has been consumed by the reduce task, then Hadoop will automatically rerun the map task on another node to re-create the map output.
 
+        Can you have multiple mappers in one job application?
+        YES.
+        See 'More Than One Mappers for Different Sets of Input Files' section in 'YARN(MapReduce2).docx'.
 
         Reducer:
 
@@ -571,39 +573,28 @@ public class WordCount {
     public static void main(String[] args) throws IOException,
             InterruptedException, ClassNotFoundException {
 
-        Path inputPath = new Path("./SampleHadoopProject/input");
-        Path outputDir = new Path("./SampleHadoopProject/output");
+        Path inputFilePath = new Path("./SampleHadoopProject/input");
+        Path outputFileDirPath = new Path("./SampleHadoopProject/output");
 
         // Create configuration
-        // this configuration can be modified with properties that you mention in hadoop's conf files like core-site.xml, hdfs-site.xml etc. Default configuration will be read from these files, but you can override them here, if you want.
+        // You can pass configuration params from command line also when you run a job that will supersede all configurations, if any.
         Configuration conf = new Configuration(true);
+        //conf.set("confkeyname", "confvalue"); // you can set any key-value configuration
+        //conf.addResource(new Path("./SampleHadoopProject/conf/core-site-override.xml")); // you can create an xml file that can have key-values. Normally, these kind of files are used to override files like core-site.xml etc.
 
         // Create job
         Job job = new Job(conf, "WordCount");
         job.setJarByClass(WordCountMapper.class); // Hadoop will find the job JAR automatically by searching for the JAR on the driver’s classpath that contains the class set in the setJarByClass() method (on JobConf or Job). Alternatively, if you want to set an explicit JAR file by its file path, you can use the setJar() method. (The JAR file path may be local or an HDFS file path.)
 
-        // Setup MapReduce
+        //********* Mapper section *******************
+
+        // Configure a Mapper
         job.setMapperClass(WordCountMapper.class);
-        job.setReducerClass(WordCountReducer.class);
-        //job.setCombinerClass(WordCountReducer.class);
-
-        // pg 217 of the book
-        // One rule of thumb is to aim for reducers that each run for five minutes or so, and which produce at least one HDFS block’s worth of output.
-        job.setNumReduceTasks(1); // by default, number of mappers is same as number of blocks in hdfs for a file.
-        // You may have noticed that we didn’t set the number of map tasks.
-        // The reason for this is that the number is equal to the number of splits that the input is turned into, which is driven by the size of the input and the file’s block size (if the file is in HDFS)
-        // If you want, you can set a different number.
-
-        // Specify key / value
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(IntWritable.class);
 
         // InputFormat has information about RecordReader. RecordReader is responsible to convert InputSplit into key-value pair that can be fed to mapper class.
         // FileInputFormat is the base class for all implementations of InputFormat that use files as their data source.
         // TextInputFormat is one of the concrete class of FileInputFormat.
         // You can customize InputFormat class, if you want. Many of the parameters used by InputFormat are configurable, so in most cases, you don't have to customize InputFormat, but there can be a case like mentioned in 'How to force Not to create more than 1 split?'
-        job.setInputFormatClass(TextInputFormat.class);
-
         /*
 
         What is InputSplit?
@@ -664,25 +655,60 @@ public class WordCount {
             You are not taking advantage of Hadoop’s parallel processing.
 
        */
+        // TextInputFormat creates input key-value of types LongWritable-Text.
+        // RecordReader of TextInputFormat converts a file into key-value pairs as start offset of a line - a line content and feeds it to a Mapper one key-value pair at a time.
+        job.setInputFormatClass(TextInputFormat.class);
 
-        FileInputFormat.addInputPath(job, inputPath);
+        FileInputFormat.addInputPath(job, inputFilePath);
         //FileInputFormat.setInputPaths(job, new Path(args[0])); // for AWS EMR
 
-        // Partitioner
+        //********** Partitioner *******************
         //job.setPartitionerClass(HashPartitioner.class); // HashPartitioner is a default Partitioner
 
-        // Output
-        FileOutputFormat.setOutputPath(job, outputDir);
-        //FileOutputFormat.setOutputPath(job, new Path(args[1])); // for AWS EMR
-        job.setOutputFormatClass(TextOutputFormat.class);
+        //********* Reducer section *******************
+        // Reducer is not mandatory. If you don't have a reducer, then output of a Mapper becomes the final output of a job.
+        // If you need to have a combiner, usually combiner's code is same as reducer, but it is not necessary to be like that.
+        // but at least its input and output key-value types are same as reducer.
+        job.setReducerClass(WordCountReducer.class);
+        //job.setCombinerClass(WordCountReducer.class);
 
-        job.waitForCompletion(true); // for AWS EMR
+        // pg 217 of the book
+        // One rule of thumb is to aim for reducers that each run for five minutes or so, and which produce at least one HDFS block’s worth of output.
+        job.setNumReduceTasks(1); // by default, number of mappers is same as number of blocks in hdfs for a file.
+        // You may have noticed that we didn’t set the number of map tasks.
+        // The reason for this is that the number is equal to the number of splits that the input is turned into, which is driven by the size of the input and the file’s block size (if the file is in HDFS)
+        // If you want, you can set a different number.
+
+        //********* Job's Output Type ************************
+        // Concrete class of InputFormat takes specific types key-value, e.g. TextInputFormat works with only LongWritable-Text type of key-value.
+        // That's not the case with OutputFormat.
+        // e.g. TextOutputFormat takes key-value of any types, so you need to specify OutputKeyClass and OutputValueClass
+        // Its keys and values may be of any type, since TextOutputFormat turns them to strings by calling toString() on them
+        // TextOutputFormat is a default output format
+        // Each key-value pair is separated by a tab character, although that may be changed using the mapreduce.output.textoutputformat.separator proper‐ ty. The counterpart to TextOutputFormat for reading in this case is KeyValue TextInputFormat, since it breaks lines into key-value pairs based on a configurable separator.
+        // LazyOutputFormat:
+        // FileOutputFormat subclasses will create output (part-r-nnnnn) files, even if they are empty. Some applications prefer that empty files not be created, which is where LazyOutputFormat helps.
+        LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
+        job.setOutputFormatClass(LazyOutputFormat.class);
+
+        // Specify output's key and value types.
+        // If there is a Reducer, this will be the output type of a Reducer.
+        // If there is only a Mapper, this will be output type of a Mapper
+        //FileOutputFormat.setOutputPath(job, new Path(args[1])); // for AWS EMR
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+
+        // Output file path
+        FileOutputFormat.setOutputPath(job, outputFileDirPath);
+
+        // keep polling to know the completion status of the job
+        job.waitForCompletion(true);
 
 /*
         // Delete output if exists
         FileSystem hdfs = FileSystem.get(conf);
-        if (hdfs.exists(outputDir))
-            hdfs.delete(outputDir, true);
+        if (hdfs.exists(outputFileDirPath))
+            hdfs.delete(outputFileDirPath, true);
 
         // Execute job
         int code = job.waitForCompletion(true) ? 0 : 1;
