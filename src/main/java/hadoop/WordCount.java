@@ -8,7 +8,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.LazyOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.io.IOException;
@@ -449,7 +448,8 @@ MapReduce
 
      static addInputPath() method on FileInputFormat, and it can be a single file, a directory (in which case, the input forms all the files in that direc‐ tory), or a file pattern. As the name suggests, addInputPath() can be called more than once to use input from multiple paths.
 
-     The setOutputKeyClass() and setOutputValueClass() methods control the output types for the reduce function, and must match what the Reduce class produces. The map output types default to the same types, so they do not need to be set if the mapper produces the same types as the reducer (as it does in our case). However, if they are different, the map output types must be set using the setMapOutputKeyClass() and setMapOutputValueClass() methods.
+     The setOutputKeyClass() and setOutputValueClass() methods control the output types for the reduce function, and must match what the Reduce class produces.
+     The map output types default to the same types, so they do not need to be set if the mapper produces the same types as the reducer (as it does in our case). However, if they are different, the map output types must be set using the setMapOutputKeyClass() and setMapOutputValueClass() methods.
 
      The waitForCompletion() method on Job submits the job and waits for it to finish. The single argument to the method is a flag indicating whether verbose output is generated. When true, the job writes information about its progress to the console.
      The return value of the waitForCompletion() method is a Boolean indicating success (true) or failure (false), which we translate into the program’s exit code of 0 or 1.
@@ -682,14 +682,18 @@ public class WordCount {
         //********* Job's Output Type ************************
         // Concrete class of InputFormat takes specific types key-value, e.g. TextInputFormat works with only LongWritable-Text type of key-value.
         // That's not the case with OutputFormat.
+
         // e.g. TextOutputFormat takes key-value of any types, so you need to specify OutputKeyClass and OutputValueClass
         // Its keys and values may be of any type, since TextOutputFormat turns them to strings by calling toString() on them
         // TextOutputFormat is a default output format
         // Each key-value pair is separated by a tab character, although that may be changed using the mapreduce.output.textoutputformat.separator proper‐ ty. The counterpart to TextOutputFormat for reading in this case is KeyValue TextInputFormat, since it breaks lines into key-value pairs based on a configurable separator.
+
         // LazyOutputFormat:
         // FileOutputFormat subclasses will create output (part-r-nnnnn) files, even if they are empty. Some applications prefer that empty files not be created, which is where LazyOutputFormat helps.
-        LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
-        job.setOutputFormatClass(LazyOutputFormat.class);
+        //LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
+        //job.setOutputFormatClass(LazyOutputFormat.class);
+        job.setOutputFormatClass(TextOutputFormat.class); // default
+        // The map output types default to the same types, so they do not need to be set if the mapper produces the same types as the reducer (as it does in our case). However, if they are different, the map output types must be set using the setMapOutputKeyClass() and setMapOutputValueClass() methods.
 
         // Specify output's key and value types.
         // If there is a Reducer, this will be the output type of a Reducer.
@@ -700,6 +704,18 @@ public class WordCount {
 
         // Output file path
         FileOutputFormat.setOutputPath(job, outputFileDirPath);
+
+
+        // Custom Comparator for Sorting and/or Grouping
+        // Every Writable is Comparable. So, it has compareTo method. By default, if will be used for sorting and/or grouping unless custom comparators for sorting and/or grouping are provided.
+
+        // Comparator for Sorting
+        //job.setSortComparatorClass(SomeComparator.class);
+
+
+        // Comparator for Grouping
+        //job.setGroupingComparatorClass(SomeComparator.class);
+
 
         // keep polling to know the completion status of the job
         job.waitForCompletion(true);
