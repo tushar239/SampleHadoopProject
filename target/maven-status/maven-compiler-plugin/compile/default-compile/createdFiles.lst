@@ -1,3 +1,6 @@
-hadoop/WordCountMapper.class
 hadoop/WordCountReducer.class
+hive/CreateTableUsingJdbc.class
 hadoop/WordCount.class
+filesystem/ListHdfsFiles.class
+hadoop/WordCountMapper.class
+filesystem/HdfsAccessOnDistributedEnvAndLocalFileSystemAccessExample.class

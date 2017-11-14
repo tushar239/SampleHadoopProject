@@ -1,0 +1,309 @@
+COPY state_table.csv TO CLOUDERA VM'S LOCAL FILE SYSTEM
+-------------------------------------------------------
+
+~> scp ~/state_table.csv  cloudera@192.168.31.132  /home/cloudera/input/states
+
+~> ssh cloudera@192.168.31.132
+password: cloudera
+
+[cloudera@quickstart ~]$
+
+[cloudera@quickstart ~]$ hive ------- going into hive shell
+
+
+CREATE allstates TABLE
+----------------------
+
+Better you try to create below table using Hue tool in browser
+http://quickstart.cloudera:8888/hue/editor/?type=hive
+It's easier
+
+hive> create table allstates(id bigint,name string,abbreviation string,country string,type string,sort string,status string,occupied string,notes string,fips_state string,assoc_press string,standard_federal_region string,census_region string,census_region_name string,census_division string,census_division_name string,circuit_court string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',';
+hive> Load data local inpath /home/cloudera/input/states/state_table.csv into table allstates;
+		OK
+		Time taken: 0.849 seconds
+
+From Hadoop Shell, you can list Hive's warehouse directory where all table files, partitions, buckets are stored.
+
+[cloudera@quickstart ~]$ hadoop fs -ls hdfs://quickstart.cloudera:8020/user/hive/warehouse/allstates
+Found 1 items
+-rwxrwxrwx   1 cloudera supergroup       7222 2017-11-13 18:33 hdfs://quickstart.cloudera:8020/user/hive/warehouse/allstates/state_table.csv
+
+CREATE PARTITIONED TABLE FROM ABOVE allstates TABLE DATA
+--------------------------------------------------------
+
+hive> create table state_part(country string,status string, id bigint) PARTITIONED BY(name string);
+		OK
+		Time taken: 0.849 seconds
+
+hive> INSERT OVERWRITE TABLE state_part PARTITION(name)
+    > select country,status,id,name from allstates; 
+FAILED: SemanticException [Error 10096]: Dynamic partition strict mode requires at least one static partition column. To turn this off set hive.exec.dynamic.partition.mode=nonstrict
+
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+
+hive> INSERT OVERWRITE TABLE state_part PARTITION(name)
+    > select country,status,id,name from allstates; 
+    
+	
+		Query ID = cloudera_20171113183939_4bbe3b22-1b74-4226-a9c3-b092b491ce12
+		Total jobs = 3
+		Launching Job 1 out of 3
+		Number of reduce tasks is set to 0 since there's no reduce operator
+		Starting Job = job_1509414122744_0002, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1509414122744_0002/
+		Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1509414122744_0002
+		Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+		2017-11-13 18:40:08,921 Stage-1 map = 0%,  reduce = 0%
+		2017-11-13 18:40:21,387 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 2.56 sec
+		MapReduce Total cumulative CPU time: 2 seconds 560 msec
+		Ended Job = job_1509414122744_0002
+		Stage-4 is selected by condition resolver.
+		Stage-3 is filtered out by condition resolver.
+		Stage-5 is filtered out by condition resolver.
+		Moving data to: hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/.hive-staging_hive_2017-11-13_18-39-47_567_9186606948681394660-1/-ext-10000
+		Loading data to table default.state_part partition (name=null)
+			 Time taken for load dynamic partitions : 5480
+			Loading partition {name=Nevada}
+			Loading partition {name=U.S. Virgin Islands}
+			Loading partition {name=Iowa}
+			Loading partition {name=Alaska}
+			Loading partition {name=North Dakota}
+			Loading partition {name=Idaho}
+			Loading partition {name=Maryland}
+			Loading partition {name=Virginia}
+			Loading partition {name=South Dakota}
+			Loading partition {name=Hawaii}
+			Loading partition {name=Armed Forces Pacific}
+			Loading partition {name=Vermont}
+			Loading partition {name=New Jersey}
+			Loading partition {name=West Virginia}
+			Loading partition {name=Georgia}
+			Loading partition {name=Puerto Rico}
+			Loading partition {name=Northern Mariana Islands}
+			Loading partition {name=Arkansas}
+			Loading partition {name=Texas}
+			Loading partition {name=American Samoa}
+			Loading partition {name=New Mexico}
+			Loading partition {name=Arizona}
+			Loading partition {name=Pennsylvania}
+			Loading partition {name=Ohio}
+			Loading partition {name=Delaware}
+			Loading partition {name=Kansas}
+			Loading partition {name=Armed Forces Europe}
+			Loading partition {name=New Hampshire}
+			Loading partition {name=Wyoming}
+			Loading partition {name=Tennessee}
+			Loading partition {name=Florida}
+			Loading partition {name=Washington}
+			Loading partition {name=Rhode Island}
+			Loading partition {name=Kentucky}
+			Loading partition {name=Indiana}
+			Loading partition {name=New York}
+			Loading partition {name=Washington DC}
+			Loading partition {name=Oregon}
+			Loading partition {name=Oklahoma}
+			Loading partition {name=Missouri}
+			Loading partition {name=Connecticut}
+			Loading partition {name=Colorado}
+			Loading partition {name=Utah}
+			Loading partition {name=Michigan}
+			Loading partition {name=Wisconsin}
+			Loading partition {name=South Carolina}
+			Loading partition {name=Nebraska}
+			Loading partition {name=Mississippi}
+			Loading partition {name=North Carolina}
+			Loading partition {name=Alabama}
+			Loading partition {name=Massachusetts}
+			Loading partition {name=California}
+			Loading partition {name=Maine}
+			Loading partition {name=Armed Forces Americas}
+			Loading partition {name=Minnesota}
+			Loading partition {name=Montana}
+			Loading partition {name=Louisiana}
+			Loading partition {name=Illinois}
+			Loading partition {name=Guam}
+			 Time taken for adding to write entity : 16
+		Partition default.state_part{name=Alabama} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Alaska} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=American Samoa} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Arizona} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Arkansas} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Armed Forces Americas} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Armed Forces Europe} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Armed Forces Pacific} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=California} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Colorado} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Connecticut} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Delaware} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Florida} stats: [numFiles=1, numRows=1, totalSize=14, rawDataSize=13]
+		Partition default.state_part{name=Georgia} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Guam} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Hawaii} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Idaho} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Illinois} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Indiana} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Iowa} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Kansas} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Kentucky} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Louisiana} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Maine} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Maryland} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Massachusetts} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Michigan} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Minnesota} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Mississippi} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Missouri} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Montana} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Nebraska} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Nevada} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=New Hampshire} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=New Jersey} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=New Mexico} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=New York} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=North Carolina} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=North Dakota} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Northern Mariana Islands} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Ohio} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Oklahoma} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Oregon} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Pennsylvania} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Puerto Rico} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Rhode Island} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=South Carolina} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=South Dakota} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Tennessee} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Texas} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=U.S. Virgin Islands} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Utah} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Vermont} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Virginia} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Washington} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Washington DC} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=West Virginia} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Wisconsin} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		Partition default.state_part{name=Wyoming} stats: [numFiles=1, numRows=1, totalSize=15, rawDataSize=14]
+		MapReduce Jobs Launched: 
+		Stage-Stage-1: Map: 1   Cumulative CPU: 2.56 sec   HDFS Read: 12101 HDFS Write: 4017 SUCCESS
+		Total MapReduce CPU Time Spent: 2 seconds 560 msec
+		OK
+		Time taken: 43.809 seconds
+
+
+
+		GOING OUT OF HIVE SHELL using exit;
+
+		/user/hive/warehouse is a place in file system where hive stores the loaded file data
+		we created state_part table with partitions by state 'name' column. There are total 59 states. so, we see 59 directories.
+
+		[cloudera@quickstart ~]$ hadoop fs -ls hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part;
+		Found 59 items
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Alabama
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Alaska
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=American Samoa
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Arizona
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Arkansas
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Armed Forces Americas
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Armed Forces Europe
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Armed Forces Pacific
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=California
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Colorado
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Connecticut
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Delaware
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Florida
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Georgia
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Guam
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Hawaii
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Idaho
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Illinois
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Indiana
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Iowa
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Kansas
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Kentucky
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Louisiana
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Maine
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Maryland
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Massachusetts
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Michigan
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Minnesota
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Mississippi
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Missouri
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Montana
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Nebraska
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Nevada
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=New Hampshire
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=New Jersey
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=New Mexico
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=New York
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=North Carolina
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=North Dakota
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Northern Mariana Islands
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Ohio
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Oklahoma
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Oregon
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Pennsylvania
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Puerto Rico
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Rhode Island
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=South Carolina
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=South Dakota
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Tennessee
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Texas
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=U.S. Virgin Islands
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Utah
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Vermont
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Virginia
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Washington
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Washington DC
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=West Virginia
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Wisconsin
+		drwxrwxrwx   - cloudera supergroup          0 2017-11-13 18:40 hdfs://quickstart.cloudera:8020/user/hive/warehouse/state_part/name=Wyoming
+		[cloudera@quickstart input]$ 
+
+
+GOING BACK TO Hive Shell
+------------------------
+[cloudera@quickstart input]$ hive
+
+Create a table with buckets of id column
+----------------------------------------
+
+hive> CREATE TABLE bucketed_states (id bigint, name string)
+    > clustered by (id) into 2 buckets;
+OK
+Time taken: 0.04 seconds
+
+
+hive> INSERT OVERWRITE TABLE bucketed_states 
+    > select id, name from allstates;
+    
+		Query ID = cloudera_20171113190505_ec55f6dd-c0ba-49fd-8c8a-e7ca64796f8e
+		Total jobs = 3
+		Launching Job 1 out of 3
+		Number of reduce tasks is set to 0 since there's no reduce operator
+		Starting Job = job_1509414122744_0003, Tracking URL = http://quickstart.cloudera:8088/proxy/application_1509414122744_0003/
+		Kill Command = /usr/lib/hadoop/bin/hadoop job  -kill job_1509414122744_0003
+		Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+		2017-11-13 19:05:24,723 Stage-1 map = 0%,  reduce = 0%
+		2017-11-13 19:05:33,995 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.72 sec
+		MapReduce Total cumulative CPU time: 1 seconds 720 msec
+		Ended Job = job_1509414122744_0003
+		Stage-4 is selected by condition resolver.
+		Stage-3 is filtered out by condition resolver.
+		Stage-5 is filtered out by condition resolver.
+		Moving data to: hdfs://quickstart.cloudera:8020/user/hive/warehouse/bucketed_states/.hive-staging_hive_2017-11-13_19-05-10_666_8182954009892353270-1/-ext-10000
+		Loading data to table default.bucketed_states
+		Table default.bucketed_states stats: [numFiles=1, numRows=59, totalSize=794, rawDataSize=735]
+		MapReduce Jobs Launched: 
+		Stage-Stage-1: Map: 1   Cumulative CPU: 1.72 sec   HDFS Read: 11723 HDFS Write: 874 SUCCESS
+		Total MapReduce CPU Time Spent: 1 seconds 720 msec
+		OK
+		Time taken: 25.799 seconds
+
+
+From Hadoop CLI,
+
+[cloudera@quickstart ~]$ hadoop fs -ls hdfs://quickstart.cloudera:8020/user/hive/warehouse/bucketed_states
+Found 1 items
+-rwxrwxrwx   1 cloudera supergroup        794 2017-11-13 19:19 hdfs://quickstart.cloudera:8020/user/hive/warehouse/bucketed_states/000000_0
+
+NOT SURE why it didn't create 2 buckets. It just created 1 bucket.

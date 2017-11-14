@@ -1,3 +1,6 @@
+/Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/filesystem/ListHdfsFiles.java
 /Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/hadoop/WordCountMapper.java
 /Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/hadoop/WordCountReducer.java
 /Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/hadoop/WordCount.java
+/Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/filesystem/HdfsAccessOnDistributedEnvAndLocalFileSystemAccessExample.java
+/Users/chokst/MavenizedProjectEclipseWSNew/SampleHadoopProject/src/main/java/hive/CreateTableUsingJdbc.java
