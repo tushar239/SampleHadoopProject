@@ -94,7 +94,8 @@ HDFS (Hadoop Distributed File System)
     NameNode, ClientNode, DataNode, SecondaryNameNode (In Hadoop V2, SecondaryNameNode is replaced with CheckpointNode and StandbyNameNode is introduced to avoid SPOF of PrimaryNameNode)
         NameNode:
             NameNode is a master node that keeps meta data of blocks stored in DataNodes.
-            Secondary NameNode is a backup for NameNode. It just keeps backup of fsimage and edit logs from Primary NameNode. It is not a back up of Primary NameNode.
+            Secondary NameNode is a backup for NameNode. Its main role is to periodically merge the namespace image (fsimage) with the edit log to prevent the edit log from becoming too large.
+            Secondary NameNode It is not a back up of Primary NameNode.
             Primary NameNode is a Single Point of Failure in Hadoop V1.
 
             NameNode manages the File System's namespace/meta-data/file blocks
@@ -513,7 +514,7 @@ MapReduce
             In the present example, we have a single reduce task that is fed by all of the map tasks.
             (IMP) Therefore, the sorted map outputs have to be transferred across the network to the node where the reduce task is running, where they are merged and then passed to the user-defined reduce function.
 
-            The output of the reduce is normally stored in HDFS for reliability.
+            (IMP) The output of the reduce is normally stored in HDFS for reliability.
             Thus, writing the reduce output does consume network bandwidth, but only as much as a normal HDFS write pipeline consumes.
 
         Multiple Reducers:
@@ -530,6 +531,8 @@ MapReduce
             The only difference is that Combiner is on the same node where Mapper is.
             By doing reduction of Mapper’s output using Combiner reduces total output to be transferred through network to a Reducer. This is a key advantage of Combiner.
 
+        Partitioner:
+            If there are more than one reducers, Partitioner decides which tuple should go to which reducer. By default, HashPartitioner is used.
 
 
     Input split number vs blocks number
