@@ -522,6 +522,7 @@ MapReduce
             Output from mappers are sorted and grouped. This grouped records are Partitioned between multiple reducers.
 
             The number of reduce tasks is not governed by the size of the input, but instead is specified independently.
+            One rule of thumb is to aim for reducers that each run for five minutes or so, and which produce at least one HDFS block’s worth of output.
 
         See the diagram of map reduce flow on page 33.
 
