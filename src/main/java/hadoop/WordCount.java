@@ -72,8 +72,8 @@ HDFS (Hadoop Distributed File System)
     So, you can control split size using mapred.min.split.size.
 
     Filesystem blocks are typically a few kilobytes in size, whereas disk blocks are normally 512 bytes.
-    HDFS, too, has the concept of a block, but it is a much larger unit—128 MB by default.
-    (IMP) Unlike a filesystem for a single disk, a file in HDFS that is smaller than a single block does not occupy a full block’s worth of under‐ lying storage. (For example, a 1 MB file stored with a block size of 128 MB uses 1 MB of disk space, not 128 MB.)
+    HDFS, too, has the concept of a block, but it is a much larger unit 128 MB by default.
+    (IMP) Unlike a filesystem for a single disk, a file in HDFS that is smaller than a single block does not occupy a full block’s worth of underlying storage. (For example, a 1 MB file stored with a block size of 128 MB uses 1 MB of disk space, not 128 MB.)
 
     (IMP) Why Is a Block in HDFS So Large?
     HDFS blocks are large compared to disk blocks, and the reason is to minimize the cost of seeks. If the block is large enough, the time it takes to transfer the data from the disk can be significantly longer than the time to seek to the start of the block. Thus, trans‐ ferring a large file made of multiple blocks operates at the disk transfer rate.
@@ -91,21 +91,21 @@ HDFS (Hadoop Distributed File System)
     The disk transfer rate (sometimes called media rate) is the speed at which data is transferred to and from the disk media
     (actual disk platter) and is a function of the recording frequency. It is generally described in megabytes per second (MBps).
 
-    NameNode, ClientNode, DataNode, SecondaryNameNode
+    NameNode, ClientNode, DataNode, SecondaryNameNode (In Hadoop V2, SecondaryNameNode is replaced with CheckpointNode and StandbyNameNode is introduced to avoid SPOF of PrimaryNameNode)
         NameNode:
             NameNode is a master node that keeps meta data of blocks stored in DataNodes.
-            Secondary NameNode is a backup for NameNode. It doesn't start working until primary NameNode goes down.
-            This is to avoid SPOF of NameNode.
+            Secondary NameNode is a backup for NameNode. It just keeps backup of fsimage and edit logs from Primary NameNode. It is not a back up of Primary NameNode.
+            Primary NameNode is a Single Point of Failure in Hadoop V1.
 
             NameNode manages the File System's namespace/meta-data/file blocks
             - Runs on 1 machine to several machines
             - It maintains 'Namespace Image(fsimage)' and 'Edit Logs'.
             Namespace Image has all metadata like block information, permissions, data node information etc.
             Edit Logs has all activities.  (VERY IMPORTANT)
-            It is recommended to have 1GB main memory in NameNode for million storage blocks.
+            It is recommended to have 1GB main memory in NameNode for a million storage blocks.
 
         ClientNode:
-            A client accesses the filesystem on behalf of the user by communicating with the name‐ node and datanodes. The client presents a filesystem interface similar to a Portable Operating System Interface (POSIX), so the user code does not need to know about the namenode and datanodes to function.
+            A client accesses the filesystem on behalf of the user by communicating with the namenode and datanodes. The client presents a filesystem interface similar to a Portable Operating System Interface (POSIX), so the user code does not need to know about the namenode and datanodes to function.
 
         DataNode:
             Datanodes are the workhorses of the filesystem. They store and retrieve blocks when they are told to (by clients or the namenode), and they report back to the namenode periodically with lists of blocks that they are storing.

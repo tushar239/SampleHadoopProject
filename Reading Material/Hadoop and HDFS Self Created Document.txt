@@ -62,7 +62,7 @@ HDFS is not so good for...
 				- HDFS stores small files inefficiently, since each file is stored in a block, and block metadata is held in memory by the namenode. Thus, a large number of small files can eat up a lot of memory on the namenode. 
 				- Default block size in HDFS is 64 MB. In one block only one file data can be stored. So, if file size is only 40MB, then basically you are not using remaning 24MB. Another file will use other blocks.
 
-			Why the block is is so large?
+			Why the block is so large?
 			To reduce seek time. Seek time is the time to search blocks for a particular file. If blocks are more then overall seek time is more.
 			The motivation is to minimize the cost of seeks as compared to transfer rate
 			– 'Time to transfer' > 'Time to seek'
@@ -85,7 +85,8 @@ HDFS is not so good for...
 HDFS Daemons
 
 	Filesystem cluster is manager by three types ofprocesses
-	• Namenode   (It's a single point of failure in Hadoop 1.x. If Namenode is down, then Hadoop is down. So Namenode should be a very good hardware. In Hadoop 2.x, this issue is resolved by putting StandaloneNode that can act in place of NameNode if it is down.)
+	• Namenode   (It's a single point of failure in Hadoop 1.x. If Namenode is down, then Hadoop is down. So Namenode should be a very good hardware. 
+		      In Hadoop 2.x, this issue is resolved by putting StandaloneNode that can act in place of NameNode if it is down.)
 		- manages the File System's namespace/meta-data/file blocks
 		- Runs on 1 machine to several machines
 		- It maintains 'Namespace Image(fsimage)' and 'Edit Logs'. Namespace Image has all metadata like block information, permissions, data node information etc. Edit Logs has all activities.  (VERY IMPORTANT)
@@ -102,7 +103,14 @@ HDFS Daemons
 			If primary namenode fails. As it is a resource consuming process, another node Secondary NameNode is here in hadoop to do this job. That's it.
 		- Requires similar hardware as Namenode machine
 		- Not used for high-availability – NOT a BackUp for Namenode
-	
+
+		As the NameNode is the single point of failure in HDFS, if NameNode fails entire HDFS file system is lost. So in order to overcome this, Hadoop implemented Secondary NameNode whose main function is to store a copy of FsImage file and edits log file.
+		FsImage is a snapshot of the HDFS file system metadata at a certain point of time and EditLog is a transaction log which contains records for every change that occurs to file system metadata. So, at any point of time, applying edits log records to FsImage (recently saved copy) will give the current status of FsImage, i.e. file system metadata.
+		
+		Secondary NameNode stores a copy of FsImage file and edits log. 	
+		
+		If NameNode is failed, File System metadata can be recovered from the last saved FsImage on the Secondary NameNode but Secondary NameNode can’t take the primary NameNode’s functionality.	
+
 	•  Backup Node
 		http://morrisjobke.de/2013/12/11/Hadoop-NameNode-and-siblings/
 		The Backup Node provides the same functionality as the Checkpoint Node, but is synchronized with the NameNode. 
@@ -127,8 +135,8 @@ HDFS Daemons
 	
 		Persistence of HDFS metadata broadly breaks down into 2 categories of files:
 
-		fsimage – An fsimage file contains the complete state of the file system at a point in time. Every file system modification is assigned a unique, monotonically increasing transaction ID. An fsimage file represents the file system state after all modifications up to a specific transaction ID.
-		edits – An edits file is a log that lists each file system change (file creation, deletion or modification) that was made after the most recent fsimage.
+			fsimage – An fsimage file contains the complete state of the file system at a point in time. Every file system modification is assigned a unique, monotonically increasing transaction ID. An fsimage file represents the file system state after all modifications up to a specific transaction ID.
+			edits – An edits file is a log that lists each file system change (file creation, deletion or modification) that was made after the most recent fsimage.
 	
 		Checkpointing is the process of merging the content of the most recent fsimage with all edits applied after that fsimage is merged in order to create a new fsimage. 
 		Checkpointing is triggered automatically by configuration policies or manually by HDFS administration commands.
@@ -152,7 +160,7 @@ Client, Namenode, and Datanodes
 
 	• Namenode does NOT directly write or read data
 		– One of the reasons for HDFS’s Scalability
-	• Client interacts with Namenode to update Namenode’s HDFS namespace and retrieve block locations for writing and reading
+	• Client interacts with Namenode to update Namenode’s HDFS namespace and retrieve block locations for writing and reading (IMP)
 	• Client interacts directly with Datanode to read/write data
 
 Namenode Memory Concerns
@@ -172,7 +180,7 @@ Namenode Memory Concerns
 Namenode's fault-tolerance
 	• Namenode daemon process must be running at all times
 		– If process crashes then cluster is down
-	• Namenode is a single point of failure
+	• Namenode is a single point of failure in Hadoop 1
 		– Host on a machine with reliable hardware (ex. sustain a diskfailure)
 		– Usually is not an issue
 	• Hadoop 2+
@@ -207,25 +215,47 @@ HDFS Java API
 	
 	
 	
-
+Map-Reduce
 JobTracker and TaskTracker (Hadoop 1.x) VS YARN (Hadoop 2.x)
 ------------------------------------------------------------
 JobTracker can be installed on Namenode or some other node.
 Each DataNode has TaskTracker.
 
 Responsibilities of JobTracker and TaskTracker
-	http://bigdata.devcodenote.com/2012/11/hadoop-namenode-datanode-job-tracker.html
+
+	JobTracker and TaskTracker are 2 essential process involved in MapReduce execution in MRv1 (or Hadoop version 1). Both processes are now deprecated in MRv2 (or Hadoop version 2) and replaced by Resource Manager, Application Master and Node Manager Daemons.
+
+	Job Tracker –
+		JobTracker process runs on a separate node and not usually on a DataNode.
+		JobTracker is an essential Daemon for MapReduce execution in MRv1. It is replaced by ResourceManager/ApplicationMaster in MRv2.
+		JobTracker receives the requests for MapReduce execution from the client.
+		JobTracker talks to the NameNode to determine the location of the data.
+		JobTracker finds the best TaskTracker nodes to execute tasks based on the data locality (proximity of the data) and the available slots to execute a task on a given node.
+		JobTracker monitors the individual TaskTrackers and the submits back the overall status of the job back to the client.
+		JobTracker process is critical to the Hadoop cluster in terms of MapReduce execution.
+		When the JobTracker is down, HDFS will still be functional but the MapReduce execution can not be started and the existing MapReduce jobs will be halted.
 	
-	JobTracker is a service used by NameNode. 
-	The primary function of the JobTracker is resource management (managing the task trackers), tracking resource availability and task life cycle management (tracking its progress, fault tolerance etc.)
-	It is too much for a single service to do this many things. So, in YARN cluster setup JobTracker's responsibility is divided into multiple services.
-
-	The TaskTracker has a simple function of following the orders of the job tracker and updating the job tracker with its progress status periodically.
-
+	TaskTracker –
+		TaskTracker runs on DataNode. Mostly on all DataNodes.
+		TaskTracker is replaced by Node Manager in MRv2.
+		Mapper and Reducer tasks are executed on DataNodes administered by TaskTrackers.
+		TaskTrackers will be assigned Mapper and Reducer tasks to execute by JobTracker.
+		TaskTracker will be in constant communication with the JobTracker signalling the progress of the task in execution.
+		TaskTracker failure is not considered fatal. When a TaskTracker becomes unresponsive, JobTracker will assign the task executed by the TaskTracker to another node.
 Durgasoft video - 
 	https://www.youtube.com/watch?v=O-yLgxaCAGc&index=2&list=PLsBV144uMkLNFuhaNLypb36ADk2WhKgwT
 Some other tutorial - 
 	http://searchdatamanagement.techtarget.com/definition/Apache-Hadoop-YARN-Yet-Another-Resource-Negotiator
+
+Map-Reduce V2 (Job Tracker's work is splitted into Resource Manager and Application Master. Map-Reduce tasks are inside container. This container can have any type of application - not only MapReduce like HadoopV1)
+	There is Node Manager on every Data Node.
+	There is only one Resource Manager on either NameNode or a separate node.
+	Node Manager sends heart beats to Resource Manager. Which containers are launched, which containers are dead etc on its node. This is how Resource Manager keeps track of all available resources in the cluster.
+		
+	When YarnClient comes to ResourceManager(RM) to run an application, RM spins off Application Master(AM) on some Data Node. AM starts container(s) in which application will run. AM keeps track of these containers. Once these containers are done with their work, AM will unregister itself from RM.
+	There is one AM per application. 
+	Container can have any application like Map-Reduce, Spark etc. HadoopV1 could have only Map-Reduce.
+
 
 In Hadoop 1.x, MapReduce program used to contain Resource Management and Scheduling capabilities also.
 They got separated as Yarn in Hadoop 2.x.
@@ -237,7 +267,6 @@ In YARN,
 	In place of SecondaryNameNode, there is a StandaloneNode that can act in place of NameNode if it is down. So, No single point of failure.
 
 YARN is just a change in cluster setup. There is no change in Hadoop Ecosystem Tools and APIs.
-Job processing is very fast in Hadoop 2.x because 
 
 What is Job Scheduling?
 https://www.youtube.com/watch?v=mIUd3pyD6Qc
