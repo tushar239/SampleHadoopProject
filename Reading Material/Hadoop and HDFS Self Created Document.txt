@@ -99,7 +99,7 @@ HDFS Daemons
 		
 	• Secondary Namenode (Secondary Namenode is replaced by CheckpointNode and StandbyNameNode in hadoop2. Checkpoint node is same as Secondary NameNode. StandbyNameNode is just like NameNode. It can be used in case of Primary NameNode failure)   (VERY IMPORTANT)
 		- Performs house keeping work so Namenode doesn’t have to. 
-			Primary NameNode keeps edit logs in memory, so there has to somebody who keeps managing these logs and namespace image for faster recovery. 
+			Primary NameNode keeps edit logs in memory, so there has to be somebody who keeps managing these logs and namespace image for faster recovery. 
 			If primary namenode fails. As it is a resource consuming process, another node Secondary NameNode is here in hadoop to do this job. That's it.
 		- Requires similar hardware as Namenode machine
 		- Not used for high-availability – NOT a BackUp for Namenode
